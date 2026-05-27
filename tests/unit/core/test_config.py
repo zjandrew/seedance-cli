@@ -89,3 +89,27 @@ def test_load_corrupt_json_raises_io_error(tmp_path: Path):
     with pytest.raises(CliError) as ei:
         load(path)
     assert ei.value.code == "IO_ERROR"
+
+
+def test_load_root_non_object_raises_io_error(tmp_path: Path):
+    path = tmp_path / "config.json"
+    path.write_text("[]")
+    with pytest.raises(CliError) as ei:
+        load(path)
+    assert ei.value.code == "IO_ERROR"
+
+
+def test_load_profiles_wrong_type_raises_io_error(tmp_path: Path):
+    path = tmp_path / "config.json"
+    path.write_text('{"profiles": "oops"}')
+    with pytest.raises(CliError) as ei:
+        load(path)
+    assert ei.value.code == "IO_ERROR"
+
+
+def test_load_null_profile_entry_raises_io_error(tmp_path: Path):
+    path = tmp_path / "config.json"
+    path.write_text('{"profiles": {"default": null}}')
+    with pytest.raises(CliError) as ei:
+        load(path)
+    assert ei.value.code == "IO_ERROR"

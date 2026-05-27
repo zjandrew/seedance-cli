@@ -37,15 +37,30 @@ def load(path: Path = DEFAULT_CONFIG_PATH) -> Config:
     except OSError as e:
         raise CliError("IO_ERROR", f"cannot read config: {path} ({e})") from e
 
-    profiles_raw: dict[str, Any] = raw.get("profiles") or {}
-    profiles = {
-        name: Profile(
-            api_key=p.get("api_key"),
-            endpoint=p.get("endpoint", DEFAULT_ENDPOINT),
-            default_model=p.get("default_model"),
+    if not isinstance(raw, dict):
+        raise CliError(
+            "IO_ERROR",
+            f"config file root must be a JSON object: {path}",
         )
-        for name, p in profiles_raw.items()
-    }
+
+    try:
+        profiles_raw: dict[str, Any] = raw.get("profiles") or {}
+        if not isinstance(profiles_raw, dict):
+            raise TypeError(f"'profiles' must be an object, got {type(profiles_raw).__name__}")
+        profiles = {
+            name: Profile(
+                api_key=p.get("api_key"),
+                endpoint=p.get("endpoint", DEFAULT_ENDPOINT),
+                default_model=p.get("default_model"),
+            )
+            for name, p in profiles_raw.items()
+        }
+    except (TypeError, AttributeError, KeyError) as e:
+        raise CliError(
+            "IO_ERROR",
+            f"config file has malformed structure: {path} ({e})",
+        ) from e
+
     if not profiles:
         profiles = {"default": Profile()}
     return Config(
