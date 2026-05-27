@@ -39,13 +39,11 @@ def exit_code_for(code: str) -> int:
 def translate(exc: Exception) -> CliError:
     if isinstance(exc, CliError):
         return exc
-    if isinstance(
-        exc,
-        (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout),
-    ):
+    if isinstance(exc, (httpx.ConnectError, httpx.TimeoutException)):
         return CliError("NETWORK_ERROR", str(exc) or exc.__class__.__name__)
     # Ark SDK exception — duck-typed to avoid hard import dependency in framework layer
-    if exc.__class__.__name__ in {"ArkAPIError", "ArkException"}:
+    ark_base_names = {"ArkAPIError", "ArkException"}
+    if any(cls.__name__ in ark_base_names for cls in type(exc).__mro__):
         details: dict[str, Any] = {}
         for attr in ("status_code", "code", "message", "request_id"):
             if hasattr(exc, attr):

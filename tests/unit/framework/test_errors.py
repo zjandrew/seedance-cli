@@ -54,3 +54,38 @@ def test_translate_unknown_to_internal():
     err = translate(RuntimeError("???"))
     assert err.code == "INTERNAL"
     assert "???" in err.message
+
+
+def test_translate_httpx_connect_timeout_to_network_error():
+    err = translate(httpx.ConnectTimeout("connect timed out"))
+    assert err.code == "NETWORK_ERROR"
+
+
+def test_translate_ark_api_error_collects_details():
+    class ArkAPIError(Exception):
+        def __init__(self, msg: str) -> None:
+            super().__init__(msg)
+            self.status_code = 429
+            self.code = "RateLimitExceeded"
+            self.message = "too many requests"
+            self.request_id = "req-abc"
+
+    err = translate(ArkAPIError("rate limited"))
+    assert err.code == "ARK_API_ERROR"
+    assert err.details == {
+        "status_code": 429,
+        "code": "RateLimitExceeded",
+        "message": "too many requests",
+        "request_id": "req-abc",
+    }
+
+
+def test_translate_ark_subclass_is_caught():
+    class ArkAPIError(Exception):
+        pass
+
+    class ArkRateLimitError(ArkAPIError):
+        pass
+
+    err = translate(ArkRateLimitError("limited"))
+    assert err.code == "ARK_API_ERROR"
