@@ -90,3 +90,54 @@ def test_resolve_auth_endpoint_falls_back_to_default():
 
 def test_default_model_constant():
     assert DEFAULT_MODEL in MODEL_ALIASES.values()
+
+
+def test_expand_forward_compat_passes_through_unknown_doubao_seedance_id():
+    # Future model IDs we don't yet know about should pass through unchanged.
+    assert expand_model("doubao-seedance-9-9-999999") == "doubao-seedance-9-9-999999"
+
+
+def test_expand_doubao_prefix_but_not_seedance_raises():
+    # The forward-compat rule is narrow: only `doubao-seedance-` prefix is trusted.
+    with pytest.raises(CliError):
+        expand_model("doubao-other-model-001")
+
+
+def test_resolve_auth_cli_endpoint_wins_over_env_and_profile():
+    _api_key, endpoint = resolve_auth(
+        cli_api_key="k",
+        cli_endpoint="https://flag-endpoint.example.com/api/v3",
+        env={"SEEDANCE_ENDPOINT": "https://env-endpoint.example.com/api/v3"},
+        profile_api_key=None,
+        profile_endpoint="https://profile-endpoint.example.com/api/v3",
+    )
+    assert endpoint == "https://flag-endpoint.example.com/api/v3"
+
+
+def test_make_ark_client_uses_args(monkeypatch):
+    # Substitute the SDK's Ark class with a fake to verify make_ark_client
+    # passes api_key and base_url through correctly.
+    from seedance_cli.core import client as client_module
+
+    captured = {}
+
+    class FakeArk:
+        def __init__(self, api_key: str, base_url: str) -> None:
+            captured["api_key"] = api_key
+            captured["base_url"] = base_url
+
+        content_generation = None
+
+    # Build a fake `volcenginesdkarkruntime` module containing FakeArk and
+    # inject it into sys.modules so the lazy import inside make_ark_client
+    # picks it up.
+    import sys
+    import types
+
+    fake_module = types.ModuleType("volcenginesdkarkruntime")
+    fake_module.Ark = FakeArk  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "volcenginesdkarkruntime", fake_module)
+
+    result = client_module.make_ark_client("sk-test-key", "https://example.com/api/v3")
+    assert isinstance(result, FakeArk)
+    assert captured == {"api_key": "sk-test-key", "base_url": "https://example.com/api/v3"}
