@@ -122,11 +122,11 @@ seedance-cli generate -p "<prompt>" [--image PATH[:role]]... [--video PATH[:role
 
 | Flag | 默认 / 说明 |
 |---|---|
-| `--out PATH` | MP4 落盘路径。结尾 `/` 当目录，文件名 = `<created_at>-<task_id短码>.mp4`。不传 = 落 cwd |
-| `--out-last-frame PATH` | 配 `--return-last-frame`，把尾帧图也下载 |
+| `--out PATH` | MP4 落盘路径。结尾 `/` 当目录（不存在则 `mkdir -p` 自动创建），文件名 = `<created_at>-<task_id短码>.mp4`；非斜杠结尾视为完整文件路径，父目录不存在则报 `IO_ERROR`，不静默 mkdir。不传 = 落 cwd 用自动文件名 |
+| `--out-last-frame PATH` | 配 `--return-last-frame`，把尾帧图也下载；路径语义同 `--out` |
 | `--async` | fire-and-forget，立即返回含 task_id 的 envelope |
 | `--no-download` | 阻塞到 succeeded 但不下载，envelope 给 `video_url` |
-| `--poll-interval N` | 默认 `default` tier = 10s / `flex` = 60s |
+| `--poll-interval N` | 用户显式传则一律生效；不传时按当次 `--service-tier` 推默认：`default`=10s / `flex`=60s |
 | `--timeout N` | 默认无（依赖 API 24h 过期） |
 
 ### 2.3 `task` —— 任务管理
