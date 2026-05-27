@@ -2,9 +2,11 @@
 import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from seedance_cli.__main__ import root
+from tests.conftest import FakeArk
 
 
 def _cli() -> CliRunner:
@@ -49,7 +51,7 @@ def test_dry_run_first_last_frame(tmp_config: Path):
     assert content[2]["role"] == "last_frame"
 
 
-def test_async_returns_task_id(tmp_config: Path, fake_ark):
+def test_async_returns_task_id(tmp_config: Path, fake_ark: FakeArk) -> None:
     fake_ark.content_generation.tasks.next_task_id = "cgt-2026-abc"
     res = _cli().invoke(root, ["generate", "-p", "a cat", "--async", "--duration", "5"])
     assert res.exit_code == 0, res.output
@@ -95,7 +97,9 @@ def test_dry_run_redacts_base64(tmp_config: Path, tmp_path: Path):
     assert "AAAAAAAAAAAAAAAAAAAA" not in body_text  # raw payload not leaked
 
 
-def test_blocking_download_writes_mp4(tmp_config: Path, tmp_path: Path, fake_ark, monkeypatch):
+def test_blocking_download_writes_mp4(
+    tmp_config: Path, tmp_path: Path, fake_ark: FakeArk, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import httpx
     import respx
 
@@ -126,7 +130,7 @@ def test_blocking_download_writes_mp4(tmp_config: Path, tmp_path: Path, fake_ark
     assert out.read_bytes() == b"\x00mp4"
 
 
-def test_no_download_omits_video_path(tmp_config: Path, fake_ark):
+def test_no_download_omits_video_path(tmp_config: Path, fake_ark: FakeArk) -> None:
     fake_ark.content_generation.tasks.scripted_statuses = ["succeeded"]
     res = _cli().invoke(
         root,
@@ -147,7 +151,7 @@ def test_no_download_omits_video_path(tmp_config: Path, fake_ark):
     assert "video_path" not in data
 
 
-def test_task_failed_exits_6(tmp_config: Path, fake_ark):
+def test_task_failed_exits_6(tmp_config: Path, fake_ark: FakeArk) -> None:
     from types import SimpleNamespace
 
     fake_ark.content_generation.tasks.scripted_statuses = ["failed"]
@@ -171,7 +175,9 @@ def test_task_failed_exits_6(tmp_config: Path, fake_ark):
     assert err["code"] == "TASK_FAILED"
 
 
-def test_return_last_frame_downloads_png(tmp_config: Path, tmp_path: Path, fake_ark):
+def test_return_last_frame_downloads_png(
+    tmp_config: Path, tmp_path: Path, fake_ark: FakeArk
+) -> None:
     import httpx
     import respx
 

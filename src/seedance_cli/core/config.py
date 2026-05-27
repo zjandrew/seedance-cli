@@ -5,7 +5,7 @@ import json
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from seedance_cli.framework.errors import CliError
 
@@ -43,18 +43,21 @@ def load(path: Path = DEFAULT_CONFIG_PATH) -> Config:
             f"config file root must be a JSON object: {path}",
         )
 
+    raw_dict: dict[str, Any] = cast("dict[str, Any]", raw)
+
     try:
-        profiles_raw: dict[str, Any] = raw.get("profiles") or {}
-        if not isinstance(profiles_raw, dict):
-            raise TypeError(f"'profiles' must be an object, got {type(profiles_raw).__name__}")
-        profiles = {
+        profiles_raw_obj: Any = raw_dict.get("profiles") or {}
+        if not isinstance(profiles_raw_obj, dict):
+            raise TypeError(f"'profiles' must be an object, got {type(profiles_raw_obj).__name__}")
+        profiles_raw: dict[str, Any] = cast("dict[str, Any]", profiles_raw_obj)
+        profiles: dict[str, Profile] = {
             name: Profile(
                 api_key=p.get("api_key"),
                 endpoint=p.get("endpoint", DEFAULT_ENDPOINT),
                 default_model=p.get("default_model"),
             )
             for name, p in profiles_raw.items()
-        }
+        }  # pyright: ignore[reportUnknownVariableType,reportUnknownMemberType,reportUnknownArgumentType]
     except (TypeError, AttributeError, KeyError) as e:
         raise CliError(
             "IO_ERROR",
@@ -64,8 +67,8 @@ def load(path: Path = DEFAULT_CONFIG_PATH) -> Config:
     if not profiles:
         profiles = {"default": Profile()}
     return Config(
-        version=raw.get("version", 1),
-        active=raw.get("active", "default"),
+        version=raw_dict.get("version", 1),
+        active=raw_dict.get("active", "default"),
         profiles=profiles,
     )
 

@@ -32,11 +32,12 @@ def _to_dict(obj: Any) -> dict[str, Any]:
     if obj is None:
         return {}
     if isinstance(obj, dict):
-        return obj
+        return obj  # pyright: ignore[reportUnknownVariableType]
     dump = getattr(obj, "model_dump", None)
     if callable(dump):
         return dump()  # type: ignore[no-any-return]
-    return {k: v for k, v in vars(obj).items() if not k.startswith("_")}
+    raw_vars: dict[str, Any] = vars(obj)  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
+    return {k: v for k, v in raw_vars.items() if not k.startswith("_")}  # pyright: ignore[reportUnknownVariableType,reportUnknownMemberType]
 
 
 def poll_until_done(

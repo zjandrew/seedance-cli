@@ -40,11 +40,11 @@ def apply_jq(env: Success, expr: str) -> Success:
         if cur is None:
             return Success(data=None)
         if key is not None:
-            cur = cur.get(key) if isinstance(cur, dict) else None
+            cur = cur.get(key) if isinstance(cur, dict) else None  # pyright: ignore[reportUnknownVariableType,reportUnknownMemberType]
         else:
             assert idx is not None
             try:
-                cur = cur[int(idx)] if isinstance(cur, list) else None
+                cur = cur[int(idx)] if isinstance(cur, list) else None  # pyright: ignore[reportUnknownVariableType]
             except IndexError:
                 cur = None
     return Success(data=cur)
@@ -72,8 +72,8 @@ def _render_table(env: Success) -> str:
         tbl = Table(show_header=False, box=None)
         tbl.add_column("key", style="cyan")
         tbl.add_column("value")
-        for k, v in data.items():
-            tbl.add_row(str(k), json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v)
+        for k, v in data.items():  # pyright: ignore[reportUnknownVariableType]
+            tbl.add_row(str(k), json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v)  # pyright: ignore[reportUnknownArgumentType]
         console.print(tbl)
         return console.export_text().rstrip()
     return json.dumps(_to_dict(env), ensure_ascii=False, indent=2)

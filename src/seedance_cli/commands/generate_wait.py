@@ -29,7 +29,7 @@ def _extract_field(resp: Any, *names: str) -> Any:
     return None
 
 
-def _to_data(resp: Any) -> dict[str, Any]:
+def response_to_data(resp: Any) -> dict[str, Any]:
     """Translate the SDK response object into the envelope-friendly dict."""
     data = {
         "task_id": getattr(resp, "id", None),
@@ -87,7 +87,7 @@ def wait_and_download(
             on_status=on_status,
         )
 
-    data = _to_data(result.response)
+    data = response_to_data(result.response)
     data["elapsed_seconds"] = round(result.elapsed_seconds, 1)
     data["poll_count"] = result.poll_count
     data["model"] = data.get("model") or model_full

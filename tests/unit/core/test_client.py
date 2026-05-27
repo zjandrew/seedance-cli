@@ -114,7 +114,7 @@ def test_resolve_auth_cli_endpoint_wins_over_env_and_profile():
     assert endpoint == "https://flag-endpoint.example.com/api/v3"
 
 
-def test_make_ark_client_uses_args(monkeypatch):
+def test_make_ark_client_uses_args(monkeypatch: pytest.MonkeyPatch) -> None:
     # Substitute the SDK's Ark class with a fake to verify make_ark_client
     # passes api_key and base_url through correctly.
     from seedance_cli.core import client as client_module
@@ -136,7 +136,7 @@ def test_make_ark_client_uses_args(monkeypatch):
 
     fake_module = types.ModuleType("volcenginesdkarkruntime")
     fake_module.Ark = FakeArk  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "volcenginesdkarkruntime", fake_module)
+    monkeypatch.setitem(sys.modules, "volcenginesdkarkruntime", fake_module)  # pyright: ignore[reportArgumentType]
 
     result = client_module.make_ark_client("sk-test-key", "https://example.com/api/v3")
     assert isinstance(result, FakeArk)

@@ -2,25 +2,26 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 import click
 
 import seedance_cli.core.client as _client_mod
 from seedance_cli.__main__ import emit
-from seedance_cli.commands.generate_wait import _to_data, wait_and_download
+from seedance_cli.commands.generate_wait import response_to_data, wait_and_download
 from seedance_cli.core.client import resolve_auth
 from seedance_cli.core.config import load, resolve_profile
 from seedance_cli.framework.envelope import Success
 
 
-def _config_path():
+def _config_path() -> Path:
     from seedance_cli.core.config import DEFAULT_CONFIG_PATH
 
     return DEFAULT_CONFIG_PATH
 
 
-def _client(ctx: click.Context):
+def _client(ctx: click.Context) -> Any:
     cfg = load(_config_path())
     profile_name = resolve_profile(cli=ctx.obj.get("profile"), env=dict(os.environ), config=cfg)
     profile = cfg.profiles[profile_name]
@@ -68,8 +69,8 @@ def task_list(
     if page_token:
         kwargs["page_token"] = page_token
     resp = client.content_generation.tasks.list(**kwargs)
-    items = getattr(resp, "items", None) or getattr(resp, "data", None) or []
-    tasks_data = [_to_data(t) for t in items]
+    items: list[Any] = getattr(resp, "items", None) or getattr(resp, "data", None) or []
+    tasks_data = [response_to_data(t) for t in items]
     emit(
         ctx,
         Success(
@@ -113,7 +114,7 @@ def task_get(
         )
         return
     resp = client.content_generation.tasks.get(task_id)
-    emit(ctx, Success(data=_to_data(resp)))
+    emit(ctx, Success(data=response_to_data(resp)))
 
 
 @task.command("delete")

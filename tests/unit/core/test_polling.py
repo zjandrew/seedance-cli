@@ -17,7 +17,7 @@ class FakeTasksAPI:
         return self._scripted[min(self.calls - 1, len(self._scripted) - 1)]
 
 
-def _resp(status: str, **extra) -> SimpleNamespace:
+def _resp(status: str, **extra: object) -> SimpleNamespace:
     return SimpleNamespace(id="cgt-1", status=status, **extra)
 
 

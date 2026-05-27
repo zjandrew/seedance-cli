@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 import click
 
@@ -39,9 +39,9 @@ def _redact_base64(req: dict[str, Any]) -> dict[str, Any]:
 
     def walk(node: Any) -> Any:
         if isinstance(node, dict):
-            return {k: walk(v) for k, v in node.items()}
+            return {k: walk(v) for k, v in node.items()}  # pyright: ignore[reportUnknownVariableType]
         if isinstance(node, list):
-            return [walk(x) for x in node]
+            return [walk(x) for x in node]  # pyright: ignore[reportUnknownVariableType]
         if isinstance(node, str) and node.startswith("data:") and ";base64," in node:
             kb = len(node) * 3 // 4 // 1024
             return f"<base64 {kb}KB>"
@@ -150,7 +150,7 @@ def generate(
         watermark=watermark,
         generate_audio=generate_audio,
         return_last_frame=return_last_frame,
-        service_tier=service_tier,
+        service_tier=cast("Literal['default', 'flex'] | None", service_tier),
         execution_expires_after=execution_expires_after,
         callback_url=callback_url,
     )

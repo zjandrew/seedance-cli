@@ -11,12 +11,12 @@ import pytest
 
 @dataclass
 class FakeTasks:
-    created: list[dict[str, Any]] = field(default_factory=list)
+    created: list[dict[str, Any]] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
     scripted_statuses: list[str] = field(default_factory=lambda: ["succeeded"])
     next_task_id: str = "cgt-2026-fake000001"
-    response_extras: dict[str, Any] = field(default_factory=dict)
-    list_response: list[Any] = field(default_factory=list)
-    deleted: list[str] = field(default_factory=list)
+    response_extras: dict[str, Any] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
+    list_response: list[Any] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
+    deleted: list[str] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
     _status_idx: int = 0
 
     def create(self, **kwargs: Any) -> SimpleNamespace:
@@ -71,9 +71,13 @@ class FakeArk:
 @pytest.fixture
 def fake_ark(monkeypatch: pytest.MonkeyPatch) -> FakeArk:
     fake = FakeArk()
+
+    def _fake_make_ark_client(*_a: object, **_k: object) -> FakeArk:
+        return fake
+
     monkeypatch.setattr(
         "seedance_cli.core.client.make_ark_client",
-        lambda *_a, **_k: fake,
+        _fake_make_ark_client,
     )
     return fake
 
