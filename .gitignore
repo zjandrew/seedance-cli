@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual env / uv
+.venv/
+.python-version
+
+# Tooling
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.pyright/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local config / secrets
+.env
+~/.seedance-cli/
+
+# Test artifacts
+tmp/
+*.mp4
+*.png
+*.jpg
+!tests/fixtures/**
