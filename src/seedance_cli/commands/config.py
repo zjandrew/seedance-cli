@@ -1,7 +1,8 @@
 # src/seedance_cli/commands/config.py
 from __future__ import annotations
 
-import sys
+from pathlib import Path
+from typing import Any
 
 import click
 
@@ -13,29 +14,18 @@ from seedance_cli.core.config import (
     mask_api_key,
     save,
 )
-from seedance_cli.framework.envelope import Success, render
-from seedance_cli.framework.errors import CliError, exit_code_for
+from seedance_cli.framework.envelope import Success
+from seedance_cli.framework.errors import CliError
 
 VALID_SET_KEYS = {"api_key", "endpoint", "default_model"}
 
 
-class _ConfigGroup(click.Group):
-    """Group subclass that catches CliError and emits a JSON failure envelope."""
-
-    def invoke(self, ctx: click.Context) -> object:
-        try:
-            return super().invoke(ctx)
-        except CliError as exc:
-            click.echo(render(exc.to_envelope(), fmt="json"))
-            sys.exit(exit_code_for(exc.code))
-
-
-@click.group(name="config", cls=_ConfigGroup)
+@click.group(name="config")
 def config() -> None:
     """Manage profiles in ~/.seedance-cli/config.json."""
 
 
-def _profile_dict(name: str, p: Profile) -> dict:
+def _profile_dict(name: str, p: Profile) -> dict[str, Any]:
     return {
         "name": name,
         "api_key": mask_api_key(p.api_key),
@@ -44,7 +34,7 @@ def _profile_dict(name: str, p: Profile) -> dict:
     }
 
 
-def _config_path():
+def _config_path() -> Path:
     # Lazy import so tmp_config fixture's monkeypatch on DEFAULT_CONFIG_PATH wins.
     from seedance_cli.core.config import DEFAULT_CONFIG_PATH
 

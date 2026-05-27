@@ -2,16 +2,30 @@
 from __future__ import annotations
 
 import sys
+from typing import Any
 
 import click
 
 from seedance_cli.framework.envelope import Envelope, Success, apply_jq, render
-from seedance_cli.framework.errors import exit_code_for, translate
+from seedance_cli.framework.errors import CliError, exit_code_for, translate
 
 __version__ = "0.1.0"
 
 
-@click.group(name="seedance-cli", invoke_without_command=False)
+class _Root(click.Group):
+    """Click group that converts CliError into a JSON envelope so that
+    `CliRunner.invoke` tests see the error in stdout. Production callers
+    go through `main()` instead, which is the regular top-level handler."""
+
+    def invoke(self, ctx: click.Context) -> Any:
+        try:
+            return super().invoke(ctx)
+        except CliError as exc:
+            click.echo(render(exc.to_envelope(), fmt="json"))
+            ctx.exit(exit_code_for(exc.code))
+
+
+@click.group(name="seedance-cli", cls=_Root, invoke_without_command=False)
 @click.version_option(__version__, prog_name="seedance-cli")
 @click.option("--endpoint", default=None, help="override endpoint for this invocation")
 @click.option("--api-key", default=None, help="override API key for this invocation")

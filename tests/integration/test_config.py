@@ -42,15 +42,9 @@ def test_config_add_and_use(tmp_config: Path):
 
 def test_config_set_unknown_key_rejected(tmp_config: Path):
     res = _cli().invoke(root, ["config", "set", "bogus", "x"])
-    assert res.exit_code != 0
-    # The error envelope goes to stderr; combined output is in res.output for CliRunner
-    out = res.output or ""
-    parsed = json.loads(out) if out.strip().startswith("{") else None
-    if parsed is None:
-        # Some CliRunner versions split streams; check the err if separate.
-        assert "INVALID_INPUT" in res.output
-    else:
-        assert parsed["error"]["code"] == "INVALID_INPUT"
+    assert res.exit_code == 2  # INVALID_INPUT → exit 2
+    parsed = json.loads(res.output)
+    assert parsed["error"]["code"] == "INVALID_INPUT"
 
 
 def test_config_unset_clears_field(tmp_config: Path):
