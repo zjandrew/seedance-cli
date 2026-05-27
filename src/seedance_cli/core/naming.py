@@ -22,7 +22,7 @@ def resolve_out_path(*, out: str | None, task_id: str, created_at: int, ext: str
         return Path.cwd() / _auto_name(task_id, created_at, ext)
     # trailing slash → directory
     if out.endswith(("/", os.sep)):
-        d = Path(out.rstrip("/" + os.sep))
+        d = Path(out.rstrip("/" + os.sep)).expanduser()
         d.mkdir(parents=True, exist_ok=True)
         return d / _auto_name(task_id, created_at, ext)
     target = Path(out).expanduser()

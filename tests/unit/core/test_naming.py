@@ -40,3 +40,19 @@ def test_directory_with_trailing_slash_auto_creates(tmp_path: Path):
 def test_extension_swap_for_last_frame(tmp_path: Path):
     p = resolve_out_path(out=None, task_id="cgt-1", created_at=0, ext="png")
     assert p.suffix == ".png"
+
+
+def test_directory_with_tilde_expands_to_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # Point HOME at tmp_path so the test doesn't litter the real home dir.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    p = resolve_out_path(out="~/clips/", task_id="cgt-1", created_at=0, ext="mp4")
+    assert p.parent == tmp_path / "clips"
+    assert (tmp_path / "clips").is_dir()
+
+
+def test_explicit_file_with_tilde_expands_to_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # Already worked before the fix; lock the behavior to prevent regression.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "subdir").mkdir()
+    p = resolve_out_path(out="~/subdir/result.mp4", task_id="cgt-1", created_at=0, ext="mp4")
+    assert p == tmp_path / "subdir" / "result.mp4"
