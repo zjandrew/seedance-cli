@@ -169,6 +169,11 @@ def build_request(
             )
 
     if params.duration is not None:
+        if full not in _DURATION_RANGE:
+            raise CliError(
+                "INVALID_INPUT",
+                f"--duration not supported for unrecognized model {params.model!r}",
+            )
         lo, hi = _DURATION_RANGE[full]
         if not (lo <= params.duration <= hi):
             raise CliError(

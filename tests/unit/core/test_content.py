@@ -263,3 +263,82 @@ def test_build_request_camera_fixed_only_on_supported_models():
             budget=RequestBudget(),
         )
     assert "camera" in ei.value.message.lower()
+
+
+def test_build_request_duration_unknown_model_raises_invalid_input():
+    # Forward-compat models in client.expand_model don't have duration ranges yet.
+    # Should raise CliError, NOT KeyError.
+    params = RequestParams(model="doubao-seedance-9-9-999999", duration=5)
+    with pytest.raises(CliError) as ei:
+        build_request(
+            params=params, text="a", images=[], videos=[], audios=[], budget=RequestBudget()
+        )
+    assert ei.value.code == "INVALID_INPUT"
+
+
+def test_build_request_duration_upper_bound_per_model():
+    # 1.5-pro upper bound is 12 (different from 2.0's 15) — verify it's enforced.
+    with pytest.raises(CliError):
+        build_request(
+            params=RequestParams(model="1.5-pro", duration=13),
+            text="a",
+            images=[],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+    # 2.0 upper bound is 15.
+    with pytest.raises(CliError):
+        build_request(
+            params=RequestParams(model="2.0", duration=16),
+            text="a",
+            images=[],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+    # 2.0 duration=15 should be accepted.
+    out = build_request(
+        params=RequestParams(model="2.0", duration=15),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["duration"] == 15
+
+
+def test_build_request_pass_through_fields():
+    # seed, callback_url, execution_expires_after, return_last_frame must all
+    # land in the request body so the SDK forwards them to Ark.
+    params = RequestParams(
+        model="1.5-pro",
+        duration=5,
+        seed=42,
+        callback_url="https://example.com/hook",
+        service_tier="flex",
+        execution_expires_after=7200,
+        return_last_frame=True,
+    )
+    out = build_request(
+        params=params, text="a", images=[], videos=[], audios=[], budget=RequestBudget()
+    )
+    assert out["seed"] == 42
+    assert out["callback_url"] == "https://example.com/hook"
+    assert out["service_tier"] == "flex"
+    assert out["execution_expires_after"] == 7200
+    assert out["return_last_frame"] is True
+
+
+def test_build_request_1_0_pro_fast_frames_accepted():
+    # 1.0-pro-fast is in _FRAMES_CAPABLE but never directly tested.
+    out = build_request(
+        params=RequestParams(model="1.0-pro-fast", frames=29),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["frames"] == 29
