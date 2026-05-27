@@ -1,7 +1,9 @@
 # tests/unit/framework/test_envelope.py
 import json
+
 import pytest
-from seedance_cli.framework.envelope import Success, Failure, render, apply_jq
+
+from seedance_cli.framework.envelope import Failure, Success, apply_jq, render
 
 
 def test_success_renders_json():
@@ -11,9 +13,19 @@ def test_success_renders_json():
 
 
 def test_failure_renders_json_with_details():
-    out = render(Failure(code="INVALID_INPUT", message="bad ratio", details={"flag": "--ratio"}), fmt="json")
+    out = render(
+        Failure(code="INVALID_INPUT", message="bad ratio", details={"flag": "--ratio"}),
+        fmt="json",
+    )
     parsed = json.loads(out)
-    assert parsed == {"ok": False, "error": {"code": "INVALID_INPUT", "message": "bad ratio", "details": {"flag": "--ratio"}}}
+    assert parsed == {
+        "ok": False,
+        "error": {
+            "code": "INVALID_INPUT",
+            "message": "bad ratio",
+            "details": {"flag": "--ratio"},
+        },
+    }
 
 
 def test_failure_renders_json_without_details():
@@ -38,6 +50,12 @@ def test_apply_jq_unknown_path_returns_none():
     env = Success(data={"a": 1})
     out = apply_jq(env, ".nope.missing")
     assert out.data is None
+
+
+def test_apply_jq_rejects_non_dot_expression():
+    env = Success(data={"a": 1})
+    with pytest.raises(ValueError):
+        apply_jq(env, "no-dot-prefix")
 
 
 def test_render_table_dict_kv():
