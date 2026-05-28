@@ -1,6 +1,6 @@
 ---
 name: seedance
-version: 0.1.0
+version: 1.0.0
 description: "当用户需要生成视频、首帧/首尾帧生视频、多模态参考生视频、编辑/延长视频，或需要连续多段视频接龙时使用。"
 metadata:
   requires:

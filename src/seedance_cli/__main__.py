@@ -9,7 +9,7 @@ import click
 from seedance_cli.framework.envelope import Envelope, Success, apply_jq, render
 from seedance_cli.framework.errors import CliError, exit_code_for, translate
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 
 class _Root(click.Group):
