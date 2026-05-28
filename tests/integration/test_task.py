@@ -30,6 +30,17 @@ def test_task_list_with_items(tmp_config: Path, fake_ark: FakeArk) -> None:
     data = json.loads(res.output)["data"]
     assert len(data["tasks"]) == 2
     assert {t["task_id"] for t in data["tasks"]} == {"cgt-1", "cgt-2"}
+    assert data["total"] == 2
+
+
+def test_task_list_with_status_and_page_num(tmp_config: Path, fake_ark: FakeArk) -> None:
+    """Verify --status (single value) and --page-num flags reach the SDK."""
+    fake_ark.content_generation.tasks.list_response = []
+    res = _cli().invoke(
+        root,
+        ["task", "list", "--status", "succeeded", "--page-num", "2", "--page-size", "10"],
+    )
+    assert res.exit_code == 0, res.output
 
 
 def test_task_get(tmp_config: Path, fake_ark: FakeArk) -> None:

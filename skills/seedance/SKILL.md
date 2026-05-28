@@ -54,7 +54,7 @@ seedance-cli generate -p "把房子刷成蓝色" --video orig.mp4 --duration 5 -
 seedance-cli generate -p "<prompt>" --image a.png --video b.mp4 --audio bgm.mp3 --out v.mp4
 
 # 任务管理
-seedance-cli task list --status running --status queued
+seedance-cli task list --status running
 seedance-cli task get <task_id> --wait --out path.mp4
 seedance-cli task delete <task_id>
 ```
@@ -181,7 +181,7 @@ ffmpeg -f concat -safe 0 \
 恢复模式:
 
 ```bash
-seedance-cli task list --status running --status queued    # 看哪些没收
+seedance-cli task list --status running    # 看哪些没收
 seedance-cli task get <id> --wait --out path.mp4           # 接回阻塞下载
 seedance-cli task delete <id>                              # 取消排队 / 删历史
 ```

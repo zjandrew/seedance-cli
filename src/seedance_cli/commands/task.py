@@ -43,40 +43,40 @@ def task() -> None:
 @task.command("list")
 @click.option(
     "--status",
-    "statuses",
-    multiple=True,
-    type=click.Choice(["queued", "running", "succeeded", "failed", "expired"]),
+    default=None,
+    type=click.Choice(["queued", "running", "succeeded", "failed", "cancelled", "expired"]),
+    help="filter by single status (SDK accepts one value)",
 )
 @click.option("--model", default=None)
 @click.option("--page-size", "page_size", type=int, default=None)
-@click.option("--page-token", "page_token", default=None)
+@click.option("--page-num", "page_num", type=int, default=None, help="1-indexed page number")
 @click.pass_context
 def task_list(
     ctx: click.Context,
-    statuses: tuple[str, ...],
+    status: str | None,
     model: str | None,
     page_size: int | None,
-    page_token: str | None,
+    page_num: int | None,
 ) -> None:
     client = _client(ctx)
     kwargs: dict[str, Any] = {}
-    if statuses:
-        kwargs["status"] = list(statuses)
+    if status:
+        kwargs["status"] = status
     if model:
         kwargs["model"] = model
     if page_size:
         kwargs["page_size"] = page_size
-    if page_token:
-        kwargs["page_token"] = page_token
+    if page_num:
+        kwargs["page_num"] = page_num
     resp = client.content_generation.tasks.list(**kwargs)
-    items: list[Any] = getattr(resp, "items", None) or getattr(resp, "data", None) or []
+    items: list[Any] = getattr(resp, "items", None) or []
     tasks_data = [response_to_data(t) for t in items]
     emit(
         ctx,
         Success(
             data={
                 "tasks": tasks_data,
-                "next_page_token": getattr(resp, "next_page_token", None),
+                "total": getattr(resp, "total", None),
             }
         ),
     )
@@ -113,7 +113,7 @@ def task_get(
             service_tier="default",
         )
         return
-    resp = client.content_generation.tasks.get(task_id)
+    resp = client.content_generation.tasks.get(task_id=task_id)
     emit(ctx, Success(data=response_to_data(resp)))
 
 

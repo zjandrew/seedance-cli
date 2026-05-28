@@ -92,6 +92,27 @@ def test_combo_image_video_audio_2_0():
     assert types == ["text", "image_url", "video_url", "audio_url"]
 
 
+def test_single_image_with_first_frame_role_is_still_i2v():
+    """A lone :first_frame on a single image is a redundantly tagged i2v,
+    not a malformed first/last pair. (Validated against real Ark API.)"""
+    refs = [_img("https://x/a.png", role="first_frame")]
+    out = build_content(
+        text="a", images=refs, videos=[], audios=[], model=MODEL_2_0, budget=RequestBudget()
+    )
+    image_items = [c for c in out if c["type"] == "image_url"]
+    assert len(image_items) == 1
+
+
+def test_single_image_with_last_frame_role_alone_rejected():
+    """Lone :last_frame on a single image is malformed — first/last pair without first."""
+    refs = [_img("https://x/a.png", role="last_frame")]
+    with pytest.raises(CliError) as ei:
+        build_content(
+            text="a", images=refs, videos=[], audios=[], model=MODEL_2_0, budget=RequestBudget()
+        )
+    assert ei.value.code == "INVALID_INPUT"
+
+
 # ---- count limits ----
 
 
