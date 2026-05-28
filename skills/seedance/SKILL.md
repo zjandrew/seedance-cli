@@ -16,7 +16,7 @@ metadata:
 
 ## 前置
 
-1. 确认 `seedance-cli` 可执行(`which seedance-cli` 或 `seedance-cli --version`)。不可执行则提示用户 `uv tool install seedance-cli` 或 `pipx install seedance-cli`。
+1. 确认 `seedance-cli` 可执行(`which seedance-cli` 或 `seedance-cli --version`)。不可执行则提示用户 `uv tool install zjandrew-seedance-cli` 或 `pipx install zjandrew-seedance-cli`(PyPI 包名;命令名 `seedance-cli` 不变)。
 2. 配置 API key:优先 env `ARK_API_KEY`;缺失时引导 `seedance-cli config init`。
 3. 默认 endpoint 是 `https://ark.cn-beijing.volces.com/api/v3`,自建/代理 endpoint 走 `seedance-cli config set endpoint https://<...>/api/v3` 或 `--endpoint` 单次覆盖。
 

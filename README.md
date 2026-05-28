@@ -6,14 +6,18 @@ CLI for Volcengine Doubao Seedance video generation (`doubao-seedance-2-0` and f
 
 ```bash
 # Recommended:
-uv tool install seedance-cli
+uv tool install zjandrew-seedance-cli
 
 # Or with pipx:
-pipx install seedance-cli
+pipx install zjandrew-seedance-cli
 
 # Companion SKILL:
 npx skills add zjandrew/seedance-cli -g -y
 ```
+
+The PyPI distribution is named `zjandrew-seedance-cli` because the bare
+`seedance-cli` name was already taken. After install you still invoke it as
+`seedance-cli` (the binary name is unchanged).
 
 Local development:
 

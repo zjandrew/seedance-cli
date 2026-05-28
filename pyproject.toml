@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "seedance-cli"
+name = "zjandrew-seedance-cli"
 version = "1.0.0"
 description = "CLI for Volcengine Doubao Seedance video generation, with a companion Claude Code SKILL"
 readme = "README.md"

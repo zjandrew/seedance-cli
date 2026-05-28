@@ -687,40 +687,6 @@ wheels = [
 ]
 
 [[package]]
-name = "seedance-cli"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "click" },
-    { name = "httpx" },
-    { name = "rich" },
-    { name = "volcengine-python-sdk", extra = ["ark"] },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pyright" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "respx" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = ">=8.1" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "pyright", marker = "extra == 'dev'" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "pytest-cov", marker = "extra == 'dev'" },
-    { name = "respx", marker = "extra == 'dev'" },
-    { name = "rich", specifier = ">=13" },
-    { name = "ruff", marker = "extra == 'dev'" },
-    { name = "volcengine-python-sdk", extras = ["ark"], specifier = ">=1.0.98" },
-]
-provides-extras = ["dev"]
-
-[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -835,3 +801,37 @@ ark = [
     { name = "httpx" },
     { name = "pydantic" },
 ]
+
+[[package]]
+name = "zjandrew-seedance-cli"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+    { name = "click" },
+    { name = "httpx" },
+    { name = "rich" },
+    { name = "volcengine-python-sdk", extra = ["ark"] },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pyright" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "respx" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.1" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pyright", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-cov", marker = "extra == 'dev'" },
+    { name = "respx", marker = "extra == 'dev'" },
+    { name = "rich", specifier = ">=13" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "volcengine-python-sdk", extras = ["ark"], specifier = ">=1.0.98" },
+]
+provides-extras = ["dev"]
