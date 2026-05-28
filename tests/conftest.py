@@ -52,7 +52,7 @@ class FakeTasks:
         )
 
     def list(self, **kwargs: Any) -> SimpleNamespace:
-        return SimpleNamespace(items=self.list_response, next_page_token=None)
+        return SimpleNamespace(items=self.list_response, total=len(self.list_response))
 
     def delete(self, task_id: str) -> None:
         self.deleted.append(task_id)

@@ -64,7 +64,17 @@ def _detect_scenario(
     if n_img == 0:
         return "text_to_video"
     roles = {i.role for i in images}
-    if roles & {"first_frame", "last_frame"}:
+    pair_roles = {"first_frame", "last_frame"}
+    # Clean first+last pair → first_last_frame.
+    if pair_roles <= roles:
+        return "first_last_frame"
+    # Any partial first/last role usage routes to first_last_frame so the
+    # downstream validator can raise a clear pair-mismatch error — EXCEPT
+    # for a lone :first_frame on a single image, which is just a redundantly
+    # tagged i2v.
+    if roles & pair_roles:
+        if n_img == 1 and roles == {"first_frame"}:
+            return "image_to_video_first"
         return "first_last_frame"
     if n_img == 1:
         return "image_to_video_first"

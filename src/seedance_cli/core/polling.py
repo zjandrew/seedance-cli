@@ -23,7 +23,7 @@ class PollResult:
 
 
 _TERMINAL_OK = {"succeeded"}
-_TERMINAL_FAIL = {"failed"}
+_TERMINAL_FAIL = {"failed", "cancelled"}
 _TERMINAL_EXPIRED = {"expired"}
 
 
@@ -64,7 +64,7 @@ def poll_until_done(
     prev = signal.signal(signal.SIGINT, _on_sigint)
     try:
         while True:
-            resp = tasks_api.get(task_id)
+            resp = tasks_api.get(task_id=task_id)
             poll_count += 1
             status = getattr(resp, "status", None) or _to_dict(resp).get("status") or "unknown"
             if on_status:
