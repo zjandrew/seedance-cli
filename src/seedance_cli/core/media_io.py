@@ -52,15 +52,21 @@ class RequestBudget:
         self.bytes_used += n
 
 
+# Schemes passed through to the API verbatim (no local file read). "asset://"
+# references Ark preset/authorized assets (virtual avatar library, authorized
+# real-person material); http(s) are public URLs (e.g. TOS).
+_URL_SCHEMES = ("http://", "https://", "asset://")
+
+
 def parse_ref(arg: str, *, valid_roles: set[str]) -> MediaRef:
-    is_url = arg.startswith("http://") or arg.startswith("https://")
+    is_url = arg.startswith(_URL_SCHEMES)
     if ":" in arg:
         head, _, tail = arg.rpartition(":")
         if tail in valid_roles and head:
             return MediaRef(
                 raw=head,
                 role=tail,
-                is_url=is_url or head.startswith(("http://", "https://")),
+                is_url=is_url or head.startswith(_URL_SCHEMES),
             )
     return MediaRef(raw=arg, role=None, is_url=is_url)
 

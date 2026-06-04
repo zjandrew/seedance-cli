@@ -49,6 +49,25 @@ def test_parse_ref_local_role_invalid_means_no_split():
     assert ref.role is None
 
 
+def test_parse_ref_asset_uri_with_role():
+    # asset://<id> references an Ark preset/authorized asset (e.g. virtual avatar
+    # library) and must be treated as a URL, not a local file path.
+    ref = parse_ref(
+        "asset://asset-20260224201607-krj8d:reference_image",
+        valid_roles={"reference_image", "reference"},
+    )
+    assert ref.raw == "asset://asset-20260224201607-krj8d"
+    assert ref.role == "reference_image"
+    assert ref.is_url is True
+
+
+def test_parse_ref_asset_uri_no_role():
+    ref = parse_ref("asset://asset-20260224201607-krj8d", valid_roles={"reference_image"})
+    assert ref.raw == "asset://asset-20260224201607-krj8d"
+    assert ref.role is None
+    assert ref.is_url is True
+
+
 def test_to_payload_url_passes_through():
     ref = MediaRef(raw="https://x/y.png", role=None, is_url=True)
     budget = RequestBudget()
@@ -56,6 +75,16 @@ def test_to_payload_url_passes_through():
     assert out["type"] == "image_url"
     assert out["image_url"]["url"] == "https://x/y.png"
     assert "role" not in out
+    assert budget.bytes_used == 0
+
+
+def test_to_payload_asset_uri_passes_through():
+    # asset:// URIs go to the API verbatim — no file read, no base64, no budget use.
+    ref = MediaRef(raw="asset://asset-20260224201607-krj8d", role="reference_image", is_url=True)
+    budget = RequestBudget()
+    out = to_payload(ref, kind="image", model="2.0", budget=budget)
+    assert out["image_url"]["url"] == "asset://asset-20260224201607-krj8d"
+    assert out["role"] == "reference_image"
     assert budget.bytes_used == 0
 
 
