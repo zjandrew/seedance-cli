@@ -34,6 +34,10 @@ _DURATION_RANGE = {
 
 VALID_IMAGE_ROLES = {"first_frame", "last_frame", "reference"}
 VALID_VIDEO_ROLES = {"reference"}
+VALID_AUDIO_ROLES = {"reference_audio"}
+# Ark requires every audio item in reference-media mode to carry this role;
+# the CLI defaults to it when --audio is passed without an explicit :role.
+DEFAULT_AUDIO_ROLE = "reference_audio"
 
 
 @dataclass
@@ -135,6 +139,16 @@ def build_content(
             f"video/audio input requires seedance 2.0 series; got {model}",
         )
 
+    # Ark rejects audio reference as the sole reference input ("reference_audio
+    # cannot be the only reference input"). It must accompany a visual reference,
+    # so pair --audio with at least one --image or --video.
+    if audios and not images and not videos:
+        raise CliError(
+            "INVALID_INPUT",
+            "reference audio cannot be the only reference input; "
+            "pair --audio with at least one --image or --video",
+        )
+
     content: list[dict[str, Any]] = []
     if text:
         content.append({"type": "text", "text": text})
@@ -147,7 +161,11 @@ def build_content(
             raise CliError("INVALID_INPUT", f"invalid video role {ref.role!r}")
         content.append(to_payload(ref, kind="video", model=full, budget=budget))
     for ref in audios:
-        content.append(to_payload(ref, kind="audio", model=full, budget=budget))
+        if ref.role and ref.role not in VALID_AUDIO_ROLES:
+            raise CliError("INVALID_INPUT", f"invalid audio role {ref.role!r}")
+        payload = to_payload(ref, kind="audio", model=full, budget=budget)
+        payload.setdefault("role", DEFAULT_AUDIO_ROLE)
+        content.append(payload)
     return content
 
 

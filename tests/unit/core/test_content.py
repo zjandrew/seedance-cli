@@ -14,8 +14,8 @@ def _vid(raw: str, role: str | None = None) -> MediaRef:
     return MediaRef(raw=raw, role=role, is_url=raw.startswith("http"))
 
 
-def _aud(raw: str) -> MediaRef:
-    return MediaRef(raw=raw, role=None, is_url=raw.startswith("http"))
+def _aud(raw: str, role: str | None = None) -> MediaRef:
+    return MediaRef(raw=raw, role=role, is_url=raw.startswith("http"))
 
 
 MODEL_2_0 = "doubao-seedance-2-0-260128"
@@ -90,6 +90,66 @@ def test_combo_image_video_audio_2_0():
     )
     types = [c["type"] for c in out]
     assert types == ["text", "image_url", "video_url", "audio_url"]
+    # Ark requires the audio item to carry role=reference_audio (reference-media mode).
+    assert out[3]["role"] == "reference_audio"
+
+
+def test_audio_defaults_to_reference_role():
+    """--audio without an explicit :role must still send role=reference_audio,
+    otherwise Ark 400s: 'reference media mode requires audio role to be reference_audio'.
+    Audio must accompany a visual reference, so pair it with an image here."""
+    out = build_content(
+        text="a",
+        images=[_img("https://x/a.png")],
+        videos=[],
+        audios=[_aud("https://x/s.mp3")],
+        model=MODEL_2_0,
+        budget=RequestBudget(),
+    )
+    audio = next(c for c in out if c["type"] == "audio_url")
+    assert audio["role"] == "reference_audio"
+
+
+def test_audio_explicit_valid_role_preserved():
+    out = build_content(
+        text="a",
+        images=[_img("https://x/a.png")],
+        videos=[],
+        audios=[_aud("https://x/s.mp3", role="reference_audio")],
+        model=MODEL_2_0,
+        budget=RequestBudget(),
+    )
+    audio = next(c for c in out if c["type"] == "audio_url")
+    assert audio["role"] == "reference_audio"
+
+
+def test_audio_invalid_role_rejected():
+    with pytest.raises(CliError) as ei:
+        build_content(
+            text="a",
+            images=[_img("https://x/a.png")],
+            videos=[],
+            audios=[_aud("https://x/s.mp3", role="bogus")],
+            model=MODEL_2_0,
+            budget=RequestBudget(),
+        )
+    assert ei.value.code == "INVALID_INPUT"
+
+
+def test_audio_only_reference_rejected():
+    """Ark: 'reference_audio cannot be the only reference input' — the CLI should
+    catch this pre-flight when --audio is passed with no --image/--video."""
+    with pytest.raises(CliError) as ei:
+        build_content(
+            text="a",
+            images=[],
+            videos=[],
+            audios=[_aud("https://x/s.mp3")],
+            model=MODEL_2_0,
+            budget=RequestBudget(),
+        )
+    assert ei.value.code == "INVALID_INPUT"
+    assert "only reference" in ei.value.message
 
 
 def test_single_image_with_first_frame_role_is_still_i2v():

@@ -17,6 +17,7 @@ from seedance_cli.core.client import (
 )
 from seedance_cli.core.config import load, resolve_profile
 from seedance_cli.core.content import (
+    VALID_AUDIO_ROLES,
     VALID_IMAGE_ROLES,
     VALID_VIDEO_ROLES,
     RequestParams,
@@ -128,7 +129,7 @@ def generate(
 
     image_refs = [parse_ref(a, valid_roles=VALID_IMAGE_ROLES) for a in images]
     video_refs = [parse_ref(a, valid_roles=VALID_VIDEO_ROLES) for a in videos]
-    audio_refs = [parse_ref(a, valid_roles=set()) for a in audios]
+    audio_refs = [parse_ref(a, valid_roles=VALID_AUDIO_ROLES) for a in audios]
 
     cfg = load(_config_path())
     profile_name = resolve_profile(cli=g.get("profile"), env=dict(os.environ), config=cfg)
