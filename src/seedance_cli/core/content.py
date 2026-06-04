@@ -32,7 +32,10 @@ _DURATION_RANGE = {
     "doubao-seedance-1-0-pro-fast-251015": (2, 12),
 }
 
-VALID_IMAGE_ROLES = {"first_frame", "last_frame", "reference"}
+# "reference_image" is the role Ark demands for image inputs in reference-media
+# mode (i.e. whenever a reference_audio item is present); "reference" is the role
+# used by the standalone multi-image reference path. Both are accepted as inputs.
+VALID_IMAGE_ROLES = {"first_frame", "last_frame", "reference", "reference_image"}
 VALID_VIDEO_ROLES = {"reference"}
 VALID_AUDIO_ROLES = {"reference_audio"}
 # Ark requires every audio item in reference-media mode to carry this role;

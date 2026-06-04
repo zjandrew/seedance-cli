@@ -152,6 +152,22 @@ def test_audio_only_reference_rejected():
     assert "only reference" in ei.value.message
 
 
+def test_image_reference_image_role_preserved():
+    """Reference-media (audio) mode requires the image role to be reference_image;
+    Ark 400s otherwise: 'reference media mode requires all image roles to be
+    reference_image'. The role must be a valid input and survive into the payload."""
+    out = build_content(
+        text="speak",
+        images=[_img("https://x/a.png", role="reference_image")],
+        videos=[],
+        audios=[_aud("https://x/s.mp3", role="reference_audio")],
+        model=MODEL_2_0,
+        budget=RequestBudget(),
+    )
+    image = next(c for c in out if c["type"] == "image_url")
+    assert image["role"] == "reference_image"
+
+
 def test_single_image_with_first_frame_role_is_still_i2v():
     """A lone :first_frame on a single image is a redundantly tagged i2v,
     not a malformed first/last pair. (Validated against real Ark API.)"""
