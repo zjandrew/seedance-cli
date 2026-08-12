@@ -659,6 +659,177 @@ def test_build_request_2_0_mini_capability_matches_2_0_series():
         )
 
 
+# ---- generation-gated params + 2.5 forced constraints (#10) ----
+
+
+def test_build_request_seed_rejected_on_2_x():
+    # Docs: seed is 1.x-only (1.5-pro / 1.0-pro / 1.0-pro-fast).
+    for m in ("2.5", "2.0", "2.0-fast", "2.0-mini"):
+        with pytest.raises(CliError) as ei:
+            build_request(
+                params=RequestParams(model=m, seed=42),
+                text="a",
+                images=[],
+                videos=[],
+                audios=[],
+                budget=RequestBudget(),
+            )
+        assert "seed" in ei.value.message, m
+
+
+def test_build_request_seed_passthrough_on_unknown_model():
+    # ADR-0001: only documented prohibitions are gated; future models pass through.
+    out = build_request(
+        params=RequestParams(model="doubao-seedance-9-9-999999", seed=7),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["seed"] == 7
+
+
+def test_build_request_ratio_forced_adaptive_on_2_5_image_scenarios():
+    # 2.5 docs: first-frame / first+last-frame tasks force ratio=adaptive.
+    with pytest.raises(CliError) as ei:
+        build_request(
+            params=RequestParams(model="2.5", ratio="16:9"),
+            text="a",
+            images=[_img("https://x/a.png")],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+    assert "adaptive" in ei.value.message
+    with pytest.raises(CliError):
+        build_request(
+            params=RequestParams(model="2.5", ratio="16:9"),
+            text="a",
+            images=[
+                _img("https://x/a.png", role="first_frame"),
+                _img("https://x/b.png", role="last_frame"),
+            ],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+    # ratio=adaptive (or omitted) is fine
+    out = build_request(
+        params=RequestParams(model="2.5", ratio="adaptive"),
+        text="a",
+        images=[_img("https://x/a.png")],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["ratio"] == "adaptive"
+
+
+def test_build_request_ratio_free_where_2_5_allows_it():
+    # text-to-video and multimodal reference carry no ratio restriction on 2.5;
+    # video with task type auto is ambiguous (could be pure reference) → pass through.
+    out = build_request(
+        params=RequestParams(model="2.5", ratio="16:9"),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["ratio"] == "16:9"
+    out = build_request(
+        params=RequestParams(model="2.5", ratio="16:9"),
+        text="a",
+        images=[_img("https://x/a.png"), _img("https://x/b.png")],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["ratio"] == "16:9"
+    out = build_request(
+        params=RequestParams(model="2.5", ratio="16:9"),
+        text="a",
+        images=[],
+        videos=[_vid("https://x/v.mp4")],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["ratio"] == "16:9"
+
+
+def test_build_request_ratio_not_forced_on_2_0():
+    out = build_request(
+        params=RequestParams(model="2.0", ratio="16:9"),
+        text="a",
+        images=[_img("https://x/a.png")],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["ratio"] == "16:9"
+
+
+def test_build_request_2_5_explicit_edit_extend_force_adaptive_ratio():
+    for tt in ("edit", "extend"):
+        with pytest.raises(CliError) as ei:
+            build_request(
+                params=RequestParams(model="2.5", ratio="16:9", task_type=tt),
+                text="repaint walls blue",
+                images=[],
+                videos=[_vid("https://x/v.mp4")],
+                audios=[],
+                budget=RequestBudget(),
+            )
+        assert "adaptive" in ei.value.message, tt
+
+
+def test_build_request_2_5_edit_requires_duration_minus_one():
+    with pytest.raises(CliError) as ei:
+        build_request(
+            params=RequestParams(model="2.5", task_type="edit", duration=10),
+            text="repaint walls blue",
+            images=[],
+            videos=[_vid("https://x/v.mp4")],
+            audios=[],
+            budget=RequestBudget(),
+        )
+    assert "-1" in ei.value.message
+    out = build_request(
+        params=RequestParams(model="2.5", task_type="edit", duration=-1),
+        text="repaint walls blue",
+        images=[],
+        videos=[_vid("https://x/v.mp4")],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["duration"] == -1
+    # extend may customize duration
+    out = build_request(
+        params=RequestParams(model="2.5", task_type="extend", duration=10),
+        text="extend the shot",
+        images=[],
+        videos=[_vid("https://x/v.mp4")],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["duration"] == 10
+
+
+def test_first_last_roles_cannot_mix_with_reference_media():
+    # Docs: first/last-frame and omni-reference are mutually exclusive scenarios.
+    with pytest.raises(CliError) as ei:
+        build_content(
+            text="a",
+            images=[_img("https://x/a.png", role="first_frame")],
+            videos=[_vid("https://x/v.mp4")],
+            audios=[],
+            model=MODEL_2_0,
+            budget=RequestBudget(),
+        )
+    assert ei.value.code == "INVALID_INPUT"
+
+
 def test_build_request_pass_through_fields():
     # seed, callback_url, execution_expires_after, return_last_frame must all
     # land in the request body so the SDK forwards them to Ark.

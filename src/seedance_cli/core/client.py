@@ -35,6 +35,8 @@ class Capability:
     flex: bool = False  # --service-tier flex
     frames: bool = False
     camera_fixed: bool = False
+    seed: bool = True  # default True: only documented prohibitions are gated
+    forced_adaptive_ratio: bool = False  # some scenarios force ratio=adaptive (2.5)
     duration_range: tuple[int, int] | None = None  # None = --duration unsupported
     duration_minus_one: bool = False  # duration=-1 lets the model decide
     explicit_reference_roles: bool = False  # reference_* roles mandatory on inputs
@@ -56,6 +58,8 @@ CAPABILITIES: dict[str, Capability] = {
         video_audio_input=True,
         audio_only_input=True,
         generate_audio=True,
+        seed=False,
+        forced_adaptive_ratio=True,
         duration_range=(4, 30),
         duration_minus_one=True,
         explicit_reference_roles=True,
@@ -70,6 +74,7 @@ CAPABILITIES: dict[str, Capability] = {
         multimodal_reference=True,
         video_audio_input=True,
         generate_audio=True,
+        seed=False,
         duration_range=(4, 15),
         duration_minus_one=True,
         resolutions=_RES_480_4K,
@@ -79,6 +84,7 @@ CAPABILITIES: dict[str, Capability] = {
         multimodal_reference=True,
         video_audio_input=True,
         generate_audio=True,
+        seed=False,
         duration_range=(4, 15),
         duration_minus_one=True,
         resolutions=_RES_480_720,
@@ -88,6 +94,7 @@ CAPABILITIES: dict[str, Capability] = {
         multimodal_reference=True,
         video_audio_input=True,
         generate_audio=True,
+        seed=False,
         duration_range=(4, 15),
         duration_minus_one=True,
         resolutions=_RES_480_720,

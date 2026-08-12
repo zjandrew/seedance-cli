@@ -36,6 +36,7 @@ class RequestParams:
     generate_audio: bool | None = None
     return_last_frame: bool = False
     service_tier: Literal["default", "flex"] | None = None
+    task_type: Literal["auto", "reference", "edit", "extend"] | None = None
     execution_expires_after: int | None = None
     callback_url: str | None = None
 
@@ -92,6 +93,15 @@ def build_content(
         raise CliError("INVALID_INPUT", f"too many audios ({len(audios)}); max {caps.max_audios}")
 
     scenario = _detect_scenario(images, videos, audios, full)
+
+    # Docs: first/last-frame and omni-reference are mutually exclusive scenarios —
+    # first_frame/last_frame roles cannot ride along with reference video/audio.
+    if (videos or audios) and any(i.role in ("first_frame", "last_frame") for i in images):
+        raise CliError(
+            "INVALID_INPUT",
+            "first/last-frame images cannot be combined with video/audio reference"
+            " inputs; use reference_image roles or drop the video/audio",
+        )
 
     if scenario == "first_last_frame":
         if len(images) != 2:
@@ -212,8 +222,17 @@ def build_request(
     if params.generate_audio is not None and not caps.generate_audio:
         raise CliError("INVALID_INPUT", f"--generate-audio not supported on {params.model}")
 
+    if params.seed is not None and not caps.seed:
+        raise CliError(
+            "INVALID_INPUT",
+            f"--seed not supported on {params.model} (1.x-only parameter)",
+        )
+
     if params.camera_fixed is not None and not caps.camera_fixed:
-        raise CliError("INVALID_INPUT", f"--camera-fixed not supported on {params.model}")
+        raise CliError(
+            "INVALID_INPUT",
+            f"--camera-fixed not supported on {params.model} (1.x-only parameter)",
+        )
 
     if params.service_tier == "flex" and not caps.flex:
         raise CliError(
@@ -230,6 +249,29 @@ def build_request(
             "INVALID_INPUT",
             f"--resolution {params.resolution} not supported on {params.model}",
         )
+
+    if caps.forced_adaptive_ratio:
+        # 2.5 forces ratio=adaptive on first-frame / first+last-frame tasks and on
+        # explicit edit/extend; violating it fails asynchronously (deferred
+        # rejection), so reject up front where the task type is certain. A video
+        # under task type auto may be a pure reference (no restriction) — passed
+        # through for the server to judge.
+        scenario = _detect_scenario(images, videos, audios, full)
+        needs_adaptive = scenario in ("image_to_video_first", "first_last_frame") or (
+            params.task_type in ("edit", "extend")
+        )
+        if needs_adaptive and params.ratio not in (None, "adaptive"):
+            raise CliError(
+                "INVALID_INPUT",
+                f"--ratio {params.ratio} not allowed for this task on {params.model}:"
+                f" ratio is forced to adaptive; drop --ratio or pass --ratio adaptive",
+            )
+        if params.task_type == "edit" and params.duration not in (None, -1):
+            raise CliError(
+                "INVALID_INPUT",
+                f"--duration must be -1 (or omitted) for edit tasks on {params.model};"
+                f" got {params.duration}",
+            )
 
     content = build_content(
         text=text,
