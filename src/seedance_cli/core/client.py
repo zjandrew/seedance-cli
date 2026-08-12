@@ -7,7 +7,7 @@ from typing import Any, Protocol
 from seedance_cli.framework.errors import CliError
 
 DEFAULT_ENDPOINT = "https://ark.cn-beijing.volces.com/api/v3"
-DEFAULT_MODEL = "doubao-seedance-2-0-260128"
+DEFAULT_MODEL = "doubao-seedance-2-5-260628"
 
 MODEL_ALIASES: dict[str, str] = {
     "2.5": "doubao-seedance-2-5-260628",

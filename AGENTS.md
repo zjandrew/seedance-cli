@@ -1,6 +1,6 @@
 # AGENTS.md
 
-CLI for Volcengine Doubao Seedance video generation (`doubao-seedance-2-0`), plus a companion agent skill in `skills/seedance/`. Python 3.10+, Click + httpx + rich, managed with `uv`.
+CLI for Volcengine Doubao Seedance video generation (default model Seedance 2.5, `doubao-seedance-2-5-260628`; 2.0/1.x selectable via `-m`), plus a companion agent skill in `skills/seedance/`. Python 3.10+, Click + httpx + rich, managed with `uv`.
 
 ## Dev commands
 

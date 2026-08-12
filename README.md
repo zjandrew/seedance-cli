@@ -1,6 +1,6 @@
 # seedance-cli
 
-CLI for Volcengine Doubao Seedance video generation (`doubao-seedance-2-0` and friends), with an accompanying SKILL for Claude Code / AI agents.
+CLI for Volcengine Doubao Seedance video generation (Seedance 2.5 by default, 2.0/1.x selectable), with an accompanying SKILL for Claude Code / AI agents.
 
 ## Install
 
@@ -54,6 +54,31 @@ seedance-cli config use prod
 seedance-cli --profile prod generate -p "..."
 ```
 
+## Models
+
+> **Since v1.1.0 the default model is Seedance 2.5.** Same commands now hit
+> `doubao-seedance-2-5-260628` (different capabilities and pricing than 2.0).
+> Pin a profile back with `seedance-cli config set default_model 2.0`, or
+> per-invocation with `-m 2.0`.
+
+`-m/--model` accepts an alias below or any full `doubao-seedance-*` id (unknown
+ids pass through for forward compatibility).
+
+| Alias | Model ID | Capability highlights |
+|---|---|---|
+| `2.5` (default) | `doubao-seedance-2-5-260628` | 480p/720p; duration 4–30s or `-1`; up to 30 images / 10 videos / 10 audios; audio-only input; `--task-type` / `--output-format` |
+| `2.0` | `doubao-seedance-2-0-260128` | 480p–4k; 4–15s or `-1`; 9 images / 3 videos / 3 audios |
+| `2.0-fast` | `doubao-seedance-2-0-fast-260128` | 480p/720p; 4–15s or `-1` |
+| `2.0-mini` | `doubao-seedance-2-0-mini-260615` | 480p/720p; 4–15s or `-1` |
+| `1.5-pro` | `doubao-seedance-1-5-pro-251215` | 480p–1080p; 4–12s or `-1`; `--camera-fixed`, `--service-tier flex`, `--seed` |
+| `1.0-pro` | `doubao-seedance-1-0-pro-250528` | 480p–1080p; 2–12s; `--frames`, `--seed` |
+| `1.0-pro-fast` | `doubao-seedance-1-0-pro-fast-251015` | 480p–1080p; 2–12s; `--frames`, `--seed` |
+
+`--seed`, `--frames`, `--camera-fixed` and `--service-tier flex` are 1.x-only;
+the CLI rejects them on 2.x up front. On 2.5, first-frame / first+last-frame
+tasks (and explicit `--task-type edit/extend`) force `ratio=adaptive` — drop
+`--ratio` and the model aligns it to your input.
+
 ## Usage
 
 ```bash
@@ -68,7 +93,7 @@ seedance-cli generate -p "360-degree pan" \
   --image first.png:first_frame --image last.png:last_frame \
   --duration 5 --out pan.mp4
 
-# Multimodal reference (seedance 2.0)
+# Multimodal reference (seedance 2.x; up to 30 images on 2.5)
 seedance-cli generate -p "..." --image a.png --image b.png --image c.png --out combo.mp4
 
 # Video edit / extend (seedance 2.x)

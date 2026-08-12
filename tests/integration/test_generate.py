@@ -20,7 +20,8 @@ def test_dry_run_text_to_video(tmp_config: Path):
     )
     assert res.exit_code == 0, res.output
     body = json.loads(res.output)["data"]
-    assert body["request"]["model"] == "doubao-seedance-2-0-260128"
+    # Default model is Seedance 2.5 (pin a profile's default_model to override).
+    assert body["request"]["model"] == "doubao-seedance-2-5-260628"
     assert body["request"]["content"][0]["text"] == "a cat"
     assert body["request"]["ratio"] == "16:9"
     assert body["request"]["duration"] == 5
@@ -39,8 +40,6 @@ def test_dry_run_first_last_frame(tmp_config: Path):
             "https://x/a.png:first_frame",
             "--image",
             "https://x/b.png:last_frame",
-            "--ratio",
-            "16:9",
             "--duration",
             "5",
         ],
