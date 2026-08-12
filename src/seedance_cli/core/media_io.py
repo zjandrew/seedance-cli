@@ -100,6 +100,16 @@ def to_payload(
     if ref.is_url:
         out[type_key] = {"url": ref.raw}
     else:
+        if kind == "video":
+            # Ark only accepts videos as web URLs (docs 1520757: URL / asset://,
+            # no base64) — a data-URI video is rejected server-side every time.
+            raise CliError(
+                "INVALID_INPUT",
+                f"local video files are not accepted by the API: {ref.raw}. "
+                f"pass a public http(s) URL (e.g. upload to TOS/OSS) or an asset:// id, "
+                f"or reuse the video_url from a previous task's response",
+                details={"path": ref.raw, "kind": kind},
+            )
         path = Path(ref.raw).expanduser()
         if not path.is_file():
             raise CliError("IO_ERROR", f"file not found: {ref.raw}")

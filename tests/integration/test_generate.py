@@ -150,6 +150,20 @@ def test_invalid_input_frames_on_2_0(tmp_config: Path):
     assert "frames" in err["message"]
 
 
+def test_local_video_rejected_preflight(
+    tmp_config: Path, tmp_path: Path, fake_ark: FakeArk
+) -> None:
+    v = tmp_path / "orig.mp4"
+    v.write_bytes(b"\x00" * 100)
+    res = _cli().invoke(root, ["generate", "-p", "edit it", "--video", str(v)])
+    assert res.exit_code == 2, res.output
+    err = json.loads(res.output)["error"]
+    assert err["code"] == "INVALID_INPUT"
+    assert "http" in err["message"]
+    # rejected pre-flight: no API call was made
+    assert fake_ark.content_generation.tasks.created == []
+
+
 def test_no_content_rejected(tmp_config: Path):
     res = _cli().invoke(root, ["generate", "--async"])
     assert res.exit_code == 2

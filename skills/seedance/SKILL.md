@@ -64,18 +64,19 @@ seedance-cli generate -p "<prompt>" --image a.png --image b.png --image c.png \
   --duration 5 --out v.mp4
 
 # 视频编辑(2.5:显式 --task-type edit 把异步报错变同步;时长锁定跟随输入,勿传 --duration/--ratio)
-seedance-cli generate -p "把房子刷成蓝色" --video orig.mp4 \
+# ⚠️ 视频输入只收 web URL(http(s)/asset://),本地文件会被前置拒绝(API 不收 base64 视频)
+seedance-cli generate -p "把房子刷成蓝色" --video "https://.../orig.mp4" \
   --task-type edit --output-format mov --out edited.mov
 
 # 视频延长(2.5:时长可自定义,比例锁定;mov 声画衔接最佳)
-seedance-cli generate -p "向后延长@视频1,..." --video orig.mp4 \
+seedance-cli generate -p "向后延长@视频1,..." --video "https://.../orig.mp4" \
   --task-type extend --output-format mov --duration 10 --out extended.mov
 
 # 纯音频驱动(仅 2.5;2.0 系音频必须搭图/视频)
 seedance-cli generate -p "<prompt>" --audio voice.mp3 --out v.mp4
 
-# 多模态组合:图 + 视频 + 音频
-seedance-cli generate -p "<prompt>" --image a.png --video b.mp4 --audio bgm.mp3 --out v.mp4
+# 多模态组合:图 + 视频 + 音频(视频仍须 URL)
+seedance-cli generate -p "<prompt>" --image a.png --video "https://.../b.mp4" --audio bgm.mp3 --out v.mp4
 
 # 任务管理
 seedance-cli task list --status running
@@ -116,7 +117,8 @@ seedance-cli task delete <task_id>
 
 ## 1.6 本地输入 vs URL
 
-- 本地路径(`./a.png`、`/path/v.mp4`)自动 base64 编码,**注意限额**:单图 ≤ 30 MB、单视频 ≤ 50 MB、单音频 ≤ 15 MB,请求体总 ≤ 64 MB。
+- **图片/音频**本地路径自动 base64 编码,**注意限额**:单图 ≤ 30 MB、单音频 ≤ 15 MB,请求体总 ≤ 64 MB。
+- **视频只收 web URL**(http(s) / `asset://`):API 不接受 base64 视频,CLI 对本地视频路径前置报 `INVALID_INPUT`。拿 URL 的两条路:复用上一个任务响应里的 `video_url`(24h 有效),或上传到 TOS/OSS。
 - 数量上限按模型:**2.5** 30 图 / 10 视频 / 10 音频(视频、音频各总时长 ≤30s);**2.0 系** 9 / 3 / 3(总时长 ≤15s)。超限报 `INVALID_INPUT`。
 - 超大文件先上传到 TOS / OSS 拿公开 URL,再传 `--image https://...`。URL 输入零成本(服务端拉),优先用 URL。
 - **已验证**:`data:<mime>;base64,...` data URI 形态服务端接受;`asset://<ID>` 引用平台预置素材/虚拟人像。
@@ -179,6 +181,7 @@ ffmpeg -sseof -1 -i clip.mp4 -frames:v 1 preview-last.jpg
 - 我正要 `Read clip.mp4` → 停,Read 读不出视频,要么抽帧要么报元数据
 - 我正要在没 `--return-last-frame` 的情况下接龙 → 停,链断了模型从零构图
 - 我正要给 2.5 的首帧/首尾帧/编辑/延长任务传 `--ratio` → 停,比例锁定跟随输入,传了被拦截或异步报错
+- 我正要把本地视频文件传给 `--video` → 停,视频只收 URL;用上一个任务的 `video_url` 或先传 TOS/OSS
 - 我正要开 1080p → 停,2.5 只有 480p/720p;确实要 1080p/4k 就 `-m 2.0`,且试拍先 720p
 - 我正要按 2.0 心智告诫"别写绝对秒数" → 停,**2.5 响应整数秒时间戳**,时间戳是 2.5 的一等公民(2.0 才只认镜头序号)
 - 我正要自己写 Python 轮询循环 → 停,CLI 已经轮询了,用 `--wait` 别绕开
@@ -213,7 +216,7 @@ ffmpeg -sseof -1 -i clip.mp4 -frames:v 1 preview-last.jpg
 | 维度 | 2.5 规格 | 2.0 系差异 |
 |---|---|---|
 | 图片输入 | jpeg/png/webp/bmp/tiff/gif/heic/heif,≤30 张,单张 < 30 MB | ≤9 张 |
-| 视频输入 | mp4/mov,≤10 个,单个 2-30 秒且总时长 ≤30s,单个 < 50 MB | ≤3 个,总 ≤15s |
+| 视频输入 | mp4/mov,**仅 URL**(http(s)/asset://,不收 base64),≤10 个,单个 2-30 秒且总时长 ≤30s,单个 < 50 MB | ≤3 个,总 ≤15s |
 | 音频输入 | mp3/wav,≤10 个,总时长 ≤30 秒,单个 < 15 MB;**可仅传音频** | ≤3 个;必须搭图/视频 |
 | 生成时长 | 4-30 秒,或 -1 让模型自选(编辑任务锁定跟随输入) | 4-15 秒 |
 | 声音输出 | 默认有声(`--no-generate-audio` 关) | 同 |
@@ -871,25 +874,29 @@ ffmpeg -f concat -safe 0 \
 
 ## 3.3 视频延长 workflow(语境保留型续拍)
 
-和 §3.2 接龙不同——这里**把整段视频作为参考输入**,让模型基于完整视频画面延续。2.5 上全链路 mov 声画衔接最佳:
+和 §3.2 接龙不同——这里**把整段视频作为参考输入**,让模型基于完整视频画面延续。2.5 上全链路 mov 声画衔接最佳。**视频输入只收 URL**——用上一个任务响应里的 `video_url`(24h 有效、2.5 有 100 次下载上限),不要传本地文件:
 
 ```bash
-# Step 1: 生成第一段(或用户已有视频),直接选 mov 容器
+# Step 1: 生成第一段,直接选 mov 容器;从 envelope 记下 task_id
 seedance-cli generate \
   -p "<base prompt>" \
   --ratio 16:9 --duration 10 --output-format mov \
   --out story/<topic>/clip-1.mov
 
-# Step 2: 用 --video 把整段喂回去;显式 extend 让参数错误同步报
+# Step 2: 从任务响应拿产物 URL(生成时的 envelope 里也有 video_url 字段)
+SEG_URL=$(seedance-cli task get <task_id> | python3 -c \
+  "import json,sys; print(json.load(sys.stdin)['data']['video_url'])")
+
+# Step 3: 用 URL 喂回;显式 extend 让参数错误同步报
 seedance-cli generate \
   -p "向后延长@视频1,0-2秒:接上段结尾画面继续...3-5秒:..." \
-  --video story/<topic>/clip-1.mov \
+  --video "$SEG_URL" \
   --task-type extend --output-format mov \
   --duration 5 \
   --out story/<topic>/clip-1-extended.mov
 ```
 
-注意:延长任务比例锁定跟随输入,**不要传 `--ratio`**;提示词里必须带触发词(向前/向后延长、延续、续写),否则被判成参考任务。
+注意:延长任务比例锁定跟随输入,**不要传 `--ratio`**;提示词里必须带触发词(向前/向后延长、延续、续写),否则被判成参考任务;URL 过期(24h)后需重新生成或把产物传到 TOS 再引用。
 
 **视频延长 vs 尾帧接龙怎么选**:
 
@@ -908,7 +915,7 @@ seedance-cli generate \
 ```bash
 seedance-cli generate \
   -p "将@视频1中的房子外立面墙壁刷成蓝色,天气和光线参考@图片1的雪天" \
-  --video original.mp4 \
+  --video "https://.../original.mp4" \
   --image snowy-day.jpg \
   --task-type edit --output-format mov \
   --out edited.mov
@@ -919,7 +926,7 @@ seedance-cli generate \
 ```bash
 seedance-cli generate \
   -p "@视频1中的女主唱换成@图片1的男主唱,动作完全模仿原视频,不要出现切镜" \
-  --video original.mp4 \
+  --video "https://.../original.mp4" \
   --image new-singer.png \
   --task-type edit --output-format mov \
   --out replaced.mov

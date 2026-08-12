@@ -96,12 +96,14 @@ seedance-cli generate -p "360-degree pan" \
 # Multimodal reference (seedance 2.x; up to 30 images on 2.5)
 seedance-cli generate -p "..." --image a.png --image b.png --image c.png --out combo.mp4
 
-# Video edit / extend (seedance 2.x)
-seedance-cli generate -p "repaint walls blue" --video orig.mp4 --duration 5 --out edited.mp4
+# Video edit / extend (seedance 2.x). Video inputs must be web URLs —
+# the API rejects base64 video; reuse a previous task's video_url or upload to TOS/OSS
+seedance-cli generate -p "repaint walls blue" --video "https://example.com/orig.mp4" \
+  --duration 5 --out edited.mp4
 
 # Seedance 2.5: declare the task type to fail fast (sync 4xx instead of a
 # deferred rejection), and pick the mov container for edit/extend chains
-seedance-cli generate -p "repaint walls blue" -m 2.5 --video orig.mp4 \
+seedance-cli generate -p "repaint walls blue" -m 2.5 --video "https://example.com/orig.mp4" \
   --task-type edit --output-format mov --out edited.mov
 
 # Async + polling

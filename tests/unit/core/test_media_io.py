@@ -133,3 +133,23 @@ def test_request_budget_overflow_raises():
         budget.add(200)
     assert ei.value.code == "INVALID_INPUT"
     assert "64" in ei.value.message  # mentions 64 MB request body cap
+
+
+def test_local_video_file_rejected_preflight(tmp_path: Path):
+    """Ark only accepts videos as web URLs (docs 1520757: URL / asset://, no
+    base64) — encoding a local video is a guaranteed server-side 400, so the
+    CLI must reject it before any API round trip."""
+    v = tmp_path / "clip.mp4"
+    v.write_bytes(b"\x00" * 100)
+    ref = MediaRef(raw=str(v), role=None, is_url=False)
+    with pytest.raises(CliError) as ei:
+        to_payload(ref, kind="video", model="doubao-seedance-2-5-260628", budget=RequestBudget())
+    assert ei.value.code == "INVALID_INPUT"
+    assert "asset://" in ei.value.message
+    assert "video_url" in ei.value.message
+
+
+def test_url_video_payload_unchanged():
+    ref = MediaRef(raw="https://x/v.mp4", role=None, is_url=True)
+    out = to_payload(ref, kind="video", model="doubao-seedance-2-5-260628", budget=RequestBudget())
+    assert out == {"type": "video_url", "video_url": {"url": "https://x/v.mp4"}}
