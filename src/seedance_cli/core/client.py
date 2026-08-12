@@ -13,6 +13,7 @@ MODEL_ALIASES: dict[str, str] = {
     "2.5": "doubao-seedance-2-5-260628",
     "2.0": "doubao-seedance-2-0-260128",
     "2.0-fast": "doubao-seedance-2-0-fast-260128",
+    "2.0-mini": "doubao-seedance-2-0-mini-260615",
     "1.5-pro": "doubao-seedance-1-5-pro-251215",
     "1.0-pro": "doubao-seedance-1-0-pro-250528",
     "1.0-pro-fast": "doubao-seedance-1-0-pro-fast-251015",
@@ -46,6 +47,7 @@ class Capability:
 
 _RES_480_720 = frozenset({"480p", "720p"})
 _RES_480_1080 = frozenset({"480p", "720p", "1080p"})
+_RES_480_4K = frozenset({"480p", "720p", "1080p", "4k"})
 
 CAPABILITIES: dict[str, Capability] = {
     # 2.5 — docs 82379/2607688 (tutorial) + 1520757 (create API)
@@ -70,10 +72,19 @@ CAPABILITIES: dict[str, Capability] = {
         generate_audio=True,
         duration_range=(4, 15),
         duration_minus_one=True,
-        resolutions=_RES_480_1080,
+        resolutions=_RES_480_4K,
         heic=True,
     ),
     "doubao-seedance-2-0-fast-260128": Capability(
+        multimodal_reference=True,
+        video_audio_input=True,
+        generate_audio=True,
+        duration_range=(4, 15),
+        duration_minus_one=True,
+        resolutions=_RES_480_720,
+        heic=True,
+    ),
+    "doubao-seedance-2-0-mini-260615": Capability(
         multimodal_reference=True,
         video_audio_input=True,
         generate_audio=True,

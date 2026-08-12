@@ -122,6 +122,7 @@ def test_heic_allowed_on_1_5_pro_and_above():
     # helper which is the canonical authority. Docs: heic/heif on 1.5-pro and up.
     assert format_allowed("heic", "image", "doubao-seedance-2-5-260628") is True
     assert format_allowed("heic", "image", "doubao-seedance-2-0-260128") is True
+    assert format_allowed("heic", "image", "doubao-seedance-2-0-mini-260615") is True
     assert format_allowed("heic", "image", "doubao-seedance-1-0-pro-250528") is False
 
 

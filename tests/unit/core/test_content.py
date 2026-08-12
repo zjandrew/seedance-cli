@@ -610,6 +610,55 @@ def test_build_request_generate_audio_accepted_on_2_5():
     assert out["generate_audio"] is False
 
 
+# ---- 2.0 series gap fixes: 2.0-mini, 4k tier (docs 82379/2291680) ----
+
+
+def test_build_request_4k_accepted_on_2_0_only():
+    out = build_request(
+        params=RequestParams(model="2.0", resolution="4k"),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["resolution"] == "4k"
+    for m in ("2.5", "2.0-fast", "2.0-mini"):
+        with pytest.raises(CliError) as ei:
+            build_request(
+                params=RequestParams(model=m, resolution="4k"),
+                text="a",
+                images=[],
+                videos=[],
+                audios=[],
+                budget=RequestBudget(),
+            )
+        assert "4k" in ei.value.message, m
+
+
+def test_build_request_2_0_mini_capability_matches_2_0_series():
+    # duration [4,15] or -1; video/audio reference inputs allowed
+    out = build_request(
+        params=RequestParams(model="2.0-mini", duration=-1),
+        text="a",
+        images=[],
+        videos=[_vid("https://x/v.mp4")],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["model"] == "doubao-seedance-2-0-mini-260615"
+    assert out["duration"] == -1
+    with pytest.raises(CliError):
+        build_request(
+            params=RequestParams(model="2.0-mini", duration=16),
+            text="a",
+            images=[],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+
+
 def test_build_request_pass_through_fields():
     # seed, callback_url, execution_expires_after, return_last_frame must all
     # land in the request body so the SDK forwards them to Ark.
