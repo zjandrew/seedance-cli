@@ -40,6 +40,7 @@ def response_to_data(resp: Any) -> dict[str, Any]:
         "duration": getattr(resp, "duration", None),
         "ratio": getattr(resp, "ratio", None),
         "resolution": getattr(resp, "resolution", None),
+        "output_format": getattr(resp, "output_format", None),
         "framespersecond": getattr(resp, "framespersecond", None),
         "seed": getattr(resp, "seed", None),
         "service_tier": getattr(resp, "service_tier", None),
@@ -102,7 +103,10 @@ def wait_and_download(
 
     if not no_download and video_url:
         created_at = int(data.get("created_at") or 0)
-        path = resolve_out_path(out=out, task_id=task_id, created_at=created_at, ext="mp4")
+        # Auto-named files follow the task's actual container (2.5 can emit mov);
+        # an explicit file path in --out is honored verbatim by resolve_out_path.
+        ext = str(data.get("output_format") or "mp4")
+        path = resolve_out_path(out=out, task_id=task_id, created_at=created_at, ext=ext)
         download(url=video_url, out=path)
         data["video_path"] = str(path)
 

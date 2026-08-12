@@ -86,6 +86,63 @@ def test_dry_run_2_5_multimodal_reference(tmp_config: Path):
     assert all(i["role"] == "reference_image" for i in images)
 
 
+def test_dry_run_2_5_task_type_and_output_format(tmp_config: Path):
+    res = _cli().invoke(
+        root,
+        [
+            "--dry-run",
+            "generate",
+            "-p",
+            "extend the shot",
+            "-m",
+            "2.5",
+            "--video",
+            "https://x/v.mp4",
+            "--task-type",
+            "extend",
+            "--output-format",
+            "mov",
+        ],
+    )
+    assert res.exit_code == 0, res.output
+    req = json.loads(res.output)["data"]["request"]
+    assert req["omni_reference_task_type"] == "extend"
+    assert req["output_format"] == "mov"
+
+
+def test_download_extension_follows_output_format(
+    tmp_config: Path, tmp_path: Path, fake_ark: FakeArk
+) -> None:
+    import httpx
+    import respx
+
+    fake_ark.content_generation.tasks.scripted_statuses = ["succeeded"]
+    fake_ark.content_generation.tasks.response_extras = {
+        "video_url": "https://fake/v.bin",
+        "output_format": "mov",
+    }
+    with respx.mock:
+        respx.get("https://fake/v.bin").mock(return_value=httpx.Response(200, content=b"MOV"))
+        res = _cli().invoke(
+            root,
+            [
+                "generate",
+                "-p",
+                "a",
+                "-m",
+                "2.5",
+                "--poll-interval",
+                "0",
+                "--out",
+                str(tmp_path) + "/",
+            ],
+        )
+    assert res.exit_code == 0, res.output
+    data = json.loads(res.output)["data"]
+    assert data["video_path"].endswith(".mov")
+    assert Path(data["video_path"]).read_bytes() == b"MOV"
+
+
 def test_invalid_input_frames_on_2_0(tmp_config: Path):
     res = _cli().invoke(root, ["generate", "-p", "a", "--frames", "29", "--async"])
     assert res.exit_code == 2

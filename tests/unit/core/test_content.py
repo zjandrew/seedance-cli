@@ -830,6 +830,65 @@ def test_first_last_roles_cannot_mix_with_reference_media():
     assert ei.value.code == "INVALID_INPUT"
 
 
+# ---- 2.5-only params: --task-type / --output-format (#11) ----
+
+
+def test_build_request_task_type_and_output_format_emitted_on_2_5():
+    out = build_request(
+        params=RequestParams(model="2.5", task_type="reference", output_format="mov"),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["omni_reference_task_type"] == "reference"
+    assert out["output_format"] == "mov"
+
+
+def test_build_request_task_type_rejected_off_2_5():
+    for m in ("2.0", "2.0-mini", "1.0-pro"):
+        with pytest.raises(CliError) as ei:
+            build_request(
+                params=RequestParams(model=m, task_type="reference"),
+                text="a",
+                images=[],
+                videos=[],
+                audios=[],
+                budget=RequestBudget(),
+            )
+        assert "task-type" in ei.value.message, m
+
+
+def test_build_request_output_format_rejected_off_2_5():
+    for m in ("2.0", "1.5-pro"):
+        with pytest.raises(CliError) as ei:
+            build_request(
+                params=RequestParams(model=m, output_format="mov"),
+                text="a",
+                images=[],
+                videos=[],
+                audios=[],
+                budget=RequestBudget(),
+            )
+        assert "output-format" in ei.value.message, m
+
+
+def test_build_request_task_type_output_format_passthrough_on_unknown_model():
+    out = build_request(
+        params=RequestParams(
+            model="doubao-seedance-9-9-999999", task_type="edit", output_format="mov"
+        ),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["omni_reference_task_type"] == "edit"
+    assert out["output_format"] == "mov"
+
+
 def test_build_request_pass_through_fields():
     # seed, callback_url, execution_expires_after, return_last_frame must all
     # land in the request body so the SDK forwards them to Ark.

@@ -81,6 +81,21 @@ def _redact_base64(req: dict[str, Any]) -> dict[str, Any]:
     type=click.Choice(["default", "flex"]),
     default=None,
 )
+@click.option(
+    "--task-type",
+    "task_type",
+    type=click.Choice(["auto", "reference", "edit", "extend"]),
+    default=None,
+    help="2.5 only: declare the omni-reference task type;"
+    " edit/extend turn deferred rejections into synchronous errors",
+)
+@click.option(
+    "--output-format",
+    "output_format",
+    type=click.Choice(["mp4", "mov"]),
+    default=None,
+    help="2.5 only: output container (mov = H.264 + yuv444p + PCM, best for edit/extend chains)",
+)
 @click.option("--execution-expires-after", "execution_expires_after", type=int, default=None)
 @click.option("--callback-url", "callback_url", default=None)
 @click.option(
@@ -114,6 +129,8 @@ def generate(
     generate_audio: bool | None,
     return_last_frame: bool,
     service_tier: str | None,
+    task_type: str | None,
+    output_format: str | None,
     execution_expires_after: int | None,
     callback_url: str | None,
     from_json: str | None,
@@ -152,6 +169,8 @@ def generate(
         generate_audio=generate_audio,
         return_last_frame=return_last_frame,
         service_tier=cast("Literal['default', 'flex'] | None", service_tier),
+        task_type=cast("Literal['auto', 'reference', 'edit', 'extend'] | None", task_type),
+        output_format=cast("Literal['mp4', 'mov'] | None", output_format),
         execution_expires_after=execution_expires_after,
         callback_url=callback_url,
     )

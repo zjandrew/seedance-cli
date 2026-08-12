@@ -36,6 +36,8 @@ class Capability:
     frames: bool = False
     camera_fixed: bool = False
     seed: bool = True  # default True: only documented prohibitions are gated
+    task_type: bool = True  # omni_reference_task_type (2.5+); default passthrough
+    output_format: bool = True  # mp4/mov selection (2.5+); default passthrough
     forced_adaptive_ratio: bool = False  # some scenarios force ratio=adaptive (2.5)
     duration_range: tuple[int, int] | None = None  # None = --duration unsupported
     duration_minus_one: bool = False  # duration=-1 lets the model decide
@@ -75,6 +77,8 @@ CAPABILITIES: dict[str, Capability] = {
         video_audio_input=True,
         generate_audio=True,
         seed=False,
+        task_type=False,
+        output_format=False,
         duration_range=(4, 15),
         duration_minus_one=True,
         resolutions=_RES_480_4K,
@@ -85,6 +89,8 @@ CAPABILITIES: dict[str, Capability] = {
         video_audio_input=True,
         generate_audio=True,
         seed=False,
+        task_type=False,
+        output_format=False,
         duration_range=(4, 15),
         duration_minus_one=True,
         resolutions=_RES_480_720,
@@ -95,6 +101,8 @@ CAPABILITIES: dict[str, Capability] = {
         video_audio_input=True,
         generate_audio=True,
         seed=False,
+        task_type=False,
+        output_format=False,
         duration_range=(4, 15),
         duration_minus_one=True,
         resolutions=_RES_480_720,
@@ -103,6 +111,8 @@ CAPABILITIES: dict[str, Capability] = {
     # 1.x series — docs 82379/2298881
     "doubao-seedance-1-5-pro-251215": Capability(
         generate_audio=True,
+        task_type=False,
+        output_format=False,
         flex=True,
         camera_fixed=True,
         duration_range=(4, 12),
@@ -112,6 +122,8 @@ CAPABILITIES: dict[str, Capability] = {
     ),
     "doubao-seedance-1-0-pro-250528": Capability(
         flex=True,
+        task_type=False,
+        output_format=False,
         frames=True,
         camera_fixed=True,
         duration_range=(2, 12),
@@ -119,6 +131,8 @@ CAPABILITIES: dict[str, Capability] = {
     ),
     "doubao-seedance-1-0-pro-fast-251015": Capability(
         flex=True,
+        task_type=False,
+        output_format=False,
         frames=True,
         camera_fixed=True,
         duration_range=(2, 12),

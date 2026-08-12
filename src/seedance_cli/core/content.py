@@ -37,6 +37,7 @@ class RequestParams:
     return_last_frame: bool = False
     service_tier: Literal["default", "flex"] | None = None
     task_type: Literal["auto", "reference", "edit", "extend"] | None = None
+    output_format: Literal["mp4", "mov"] | None = None
     execution_expires_after: int | None = None
     callback_url: str | None = None
 
@@ -228,6 +229,18 @@ def build_request(
             f"--seed not supported on {params.model} (1.x-only parameter)",
         )
 
+    if params.task_type is not None and not caps.task_type:
+        raise CliError(
+            "INVALID_INPUT",
+            f"--task-type not supported on {params.model} (2.5-only parameter)",
+        )
+
+    if params.output_format is not None and not caps.output_format:
+        raise CliError(
+            "INVALID_INPUT",
+            f"--output-format not supported on {params.model} (2.5-only parameter)",
+        )
+
     if params.camera_fixed is not None and not caps.camera_fixed:
         raise CliError(
             "INVALID_INPUT",
@@ -291,6 +304,8 @@ def build_request(
         (params.camera_fixed, "camera_fixed"),
         (params.generate_audio, "generate_audio"),
         (params.service_tier, "service_tier"),
+        (params.task_type, "omni_reference_task_type"),
+        (params.output_format, "output_format"),
         (params.execution_expires_after, "execution_expires_after"),
         (params.callback_url, "callback_url"),
     ]:
