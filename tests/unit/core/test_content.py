@@ -816,6 +816,41 @@ def test_build_request_2_5_edit_requires_duration_minus_one():
     assert out["duration"] == 10
 
 
+def test_image_cap_applies_when_video_or_audio_present():
+    # The per-model image cap must hold in omni-reference mode too, not just in
+    # the pure multi-image scenario (docs: 2.0 caps at 9 images, 2.5 at 30).
+    imgs_10 = [_img(f"https://x/{i}.png") for i in range(10)]
+    with pytest.raises(CliError) as ei:
+        build_content(
+            text="a",
+            images=imgs_10,
+            videos=[_vid("https://x/v.mp4")],
+            audios=[],
+            model=MODEL_2_0,
+            budget=RequestBudget(),
+        )
+    assert ei.value.code == "INVALID_INPUT"
+    imgs_31 = [_img(f"https://x/{i}.png") for i in range(31)]
+    with pytest.raises(CliError):
+        build_content(
+            text="a",
+            images=imgs_31,
+            videos=[_vid("https://x/v.mp4")],
+            audios=[],
+            model=MODEL_2_5,
+            budget=RequestBudget(),
+        )
+    out = build_content(
+        text="a",
+        images=imgs_10,
+        videos=[_vid("https://x/v.mp4")],
+        audios=[],
+        model=MODEL_2_5,
+        budget=RequestBudget(),
+    )
+    assert sum(1 for c in out if c["type"] == "image_url") == 10
+
+
 def test_first_last_roles_cannot_mix_with_reference_media():
     # Docs: first/last-frame and omni-reference are mutually exclusive scenarios.
     with pytest.raises(CliError) as ei:

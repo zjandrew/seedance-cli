@@ -105,7 +105,7 @@ def _redact_base64(req: dict[str, Any]) -> dict[str, Any]:
     default=None,
     help="load request body from JSON; other flags still override top-level fields",
 )
-@click.option("--out", default=None, help="output mp4 path (trailing / treats as dir)")
+@click.option("--out", default=None, help="output video path (trailing / treats as dir)")
 @click.option("--out-last-frame", "out_last_frame", default=None)
 @click.option("--async", "is_async", is_flag=True, default=False)
 @click.option("--no-download", "no_download", is_flag=True, default=False)

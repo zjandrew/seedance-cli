@@ -42,9 +42,18 @@ class RequestParams:
     callback_url: str | None = None
 
 
+Scenario = Literal[
+    "text_to_video",
+    "image_to_video_first",
+    "first_last_frame",
+    "multimodal_reference",
+    "video_edit_extend",
+]
+
+
 def _detect_scenario(
     images: list[MediaRef], videos: list[MediaRef], audios: list[MediaRef], model: str
-) -> str:
+) -> Scenario:
     """Decide which validation rules apply and label for errors."""
     n_img = len(images)
     n_vid = len(videos)
@@ -92,11 +101,15 @@ def build_content(
         raise CliError("INVALID_INPUT", f"too many videos ({len(videos)}); max {caps.max_videos}")
     if len(audios) > caps.max_audios:
         raise CliError("INVALID_INPUT", f"too many audios ({len(audios)}); max {caps.max_audios}")
+    if len(images) > caps.max_ref_images:
+        raise CliError(
+            "INVALID_INPUT", f"too many images ({len(images)}); max {caps.max_ref_images}"
+        )
 
     scenario = _detect_scenario(images, videos, audios, full)
 
-    # Docs: first/last-frame and omni-reference are mutually exclusive scenarios —
-    # first_frame/last_frame roles cannot ride along with reference video/audio.
+    # Docs 1520757: first/last-frame and omni-reference are mutually exclusive
+    # scenarios — first/last roles cannot ride along with reference video/audio.
     if (videos or audios) and any(i.role in ("first_frame", "last_frame") for i in images):
         raise CliError(
             "INVALID_INPUT",
@@ -226,31 +239,36 @@ def build_request(
     if params.seed is not None and not caps.seed:
         raise CliError(
             "INVALID_INPUT",
-            f"--seed not supported on {params.model} (1.x-only parameter)",
+            f"--seed not supported on {params.model} (1.x-only parameter);"
+            f" drop it or switch to a 1.x model, e.g. -m 1.5-pro",
         )
 
     if params.task_type is not None and not caps.task_type:
         raise CliError(
             "INVALID_INPUT",
-            f"--task-type not supported on {params.model} (2.5-only parameter)",
+            f"--task-type not supported on {params.model} (2.5-only parameter);"
+            f" drop it or use -m 2.5",
         )
 
     if params.output_format is not None and not caps.output_format:
         raise CliError(
             "INVALID_INPUT",
-            f"--output-format not supported on {params.model} (2.5-only parameter)",
+            f"--output-format not supported on {params.model} (2.5-only parameter);"
+            f" drop it or use -m 2.5",
         )
 
     if params.camera_fixed is not None and not caps.camera_fixed:
         raise CliError(
             "INVALID_INPUT",
-            f"--camera-fixed not supported on {params.model} (1.x-only parameter)",
+            f"--camera-fixed not supported on {params.model} (1.x-only parameter);"
+            f" drop it or switch to a 1.x model, e.g. -m 1.5-pro",
         )
 
     if params.service_tier == "flex" and not caps.flex:
         raise CliError(
             "INVALID_INPUT",
-            f"--service-tier flex not supported on {params.model}",
+            f"--service-tier flex not supported on {params.model} (1.x-only);"
+            f" drop it or switch to a 1.x model, e.g. -m 1.5-pro",
         )
 
     if (
