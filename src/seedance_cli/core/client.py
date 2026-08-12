@@ -1,6 +1,7 @@
 # src/seedance_cli/core/client.py
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from seedance_cli.framework.errors import CliError
@@ -17,6 +18,81 @@ MODEL_ALIASES: dict[str, str] = {
 }
 
 _FULL_IDS = set(MODEL_ALIASES.values())
+
+
+@dataclass(frozen=True)
+class Capability:
+    """Local-validation surface for one model, per ADR-0001: only constraints that
+    are explicit in the Ark docs (82379 series) AND expensive to fail server-side
+    are enforced locally; everything else passes through."""
+
+    multimodal_reference: bool = False  # multiple role-less images as reference
+    video_audio_input: bool = False  # video/audio reference inputs
+    generate_audio: bool = False
+    flex: bool = False  # --service-tier flex
+    frames: bool = False
+    camera_fixed: bool = False
+    duration_range: tuple[int, int] | None = None  # None = --duration unsupported
+    resolutions: frozenset[str] | None = None  # None = no local restriction
+    max_ref_images: int = 9
+    max_videos: int = 3
+    max_audios: int = 3
+    heic: bool = False  # heic/heif image inputs
+
+
+_RES_480_720 = frozenset({"480p", "720p"})
+_RES_480_1080 = frozenset({"480p", "720p", "1080p"})
+
+CAPABILITIES: dict[str, Capability] = {
+    # 2.0 series — docs 82379/2291680
+    "doubao-seedance-2-0-260128": Capability(
+        multimodal_reference=True,
+        video_audio_input=True,
+        generate_audio=True,
+        duration_range=(4, 15),
+        resolutions=_RES_480_1080,
+        heic=True,
+    ),
+    "doubao-seedance-2-0-fast-260128": Capability(
+        multimodal_reference=True,
+        video_audio_input=True,
+        generate_audio=True,
+        duration_range=(4, 15),
+        resolutions=_RES_480_720,
+        heic=True,
+    ),
+    # 1.x series — docs 82379/2298881
+    "doubao-seedance-1-5-pro-251215": Capability(
+        generate_audio=True,
+        flex=True,
+        camera_fixed=True,
+        duration_range=(4, 12),
+        resolutions=_RES_480_1080,
+        heic=True,
+    ),
+    "doubao-seedance-1-0-pro-250528": Capability(
+        flex=True,
+        frames=True,
+        camera_fixed=True,
+        duration_range=(2, 12),
+        resolutions=_RES_480_1080,
+    ),
+    "doubao-seedance-1-0-pro-fast-251015": Capability(
+        flex=True,
+        frames=True,
+        camera_fixed=True,
+        duration_range=(2, 12),
+        resolutions=_RES_480_1080,
+    ),
+}
+
+# Forward-compat models (unrecognized doubao-seedance-* ids) degrade to the
+# conservative default: text/single-image only, scalar params passed through.
+_UNKNOWN_CAPABILITY = Capability()
+
+
+def capability_of(full_id: str) -> Capability:
+    return CAPABILITIES.get(full_id, _UNKNOWN_CAPABILITY)
 
 
 class ArkLike(Protocol):

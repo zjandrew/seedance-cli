@@ -4,33 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from seedance_cli.core.client import expand_model
+from seedance_cli.core.client import capability_of, expand_model
 from seedance_cli.core.media_io import MediaRef, RequestBudget, to_payload
 from seedance_cli.framework.errors import CliError
-
-_2_0_SERIES = {"doubao-seedance-2-0-260128", "doubao-seedance-2-0-fast-260128"}
-_AUDIO_CAPABLE = _2_0_SERIES | {"doubao-seedance-1-5-pro-251215"}
-_FLEX_CAPABLE = {
-    "doubao-seedance-1-5-pro-251215",
-    "doubao-seedance-1-0-pro-250528",
-    "doubao-seedance-1-0-pro-fast-251015",
-}
-_FRAMES_CAPABLE = {
-    "doubao-seedance-1-0-pro-250528",
-    "doubao-seedance-1-0-pro-fast-251015",
-}
-_CAMERA_FIXED_CAPABLE = {
-    "doubao-seedance-1-5-pro-251215",
-    "doubao-seedance-1-0-pro-250528",
-    "doubao-seedance-1-0-pro-fast-251015",
-}
-_DURATION_RANGE = {
-    "doubao-seedance-2-0-260128": (4, 15),
-    "doubao-seedance-2-0-fast-260128": (4, 15),
-    "doubao-seedance-1-5-pro-251215": (4, 12),
-    "doubao-seedance-1-0-pro-250528": (2, 12),
-    "doubao-seedance-1-0-pro-fast-251015": (2, 12),
-}
 
 # "reference_image" is the role Ark demands for image inputs in reference-media
 # mode (i.e. whenever a reference_audio item is present); "reference" is the role
@@ -98,6 +74,7 @@ def build_content(
     budget: RequestBudget,
 ) -> list[dict[str, Any]]:
     full = expand_model(model)
+    caps = capability_of(full)
 
     if text is None and not images and not videos and not audios:
         raise CliError(
@@ -105,10 +82,10 @@ def build_content(
             "no content: pass -p TEXT or at least one --image/--video/--audio",
         )
 
-    if len(videos) > 3:
-        raise CliError("INVALID_INPUT", f"too many videos ({len(videos)}); max 3")
-    if len(audios) > 3:
-        raise CliError("INVALID_INPUT", f"too many audios ({len(audios)}); max 3")
+    if len(videos) > caps.max_videos:
+        raise CliError("INVALID_INPUT", f"too many videos ({len(videos)}); max {caps.max_videos}")
+    if len(audios) > caps.max_audios:
+        raise CliError("INVALID_INPUT", f"too many audios ({len(audios)}); max {caps.max_audios}")
 
     scenario = _detect_scenario(images, videos, audios, full)
 
@@ -124,22 +101,22 @@ def build_content(
             )
 
     if scenario == "multimodal_reference":
-        if full not in _2_0_SERIES:
+        if not caps.multimodal_reference:
             raise CliError(
                 "INVALID_INPUT",
-                f"multimodal reference (multiple images, no role) requires"
-                f" seedance 2.0 series; got {model}",
+                f"multimodal reference (multiple images, no role) not supported on {model}",
                 details={"model": full},
             )
-        if not (1 <= len(images) <= 9):
+        if not (1 <= len(images) <= caps.max_ref_images):
             raise CliError(
-                "INVALID_INPUT", f"multimodal reference allows 1-9 images, got {len(images)}"
+                "INVALID_INPUT",
+                f"multimodal reference allows 1-{caps.max_ref_images} images, got {len(images)}",
             )
 
-    if (videos or audios) and full not in _2_0_SERIES:
+    if (videos or audios) and not caps.video_audio_input:
         raise CliError(
             "INVALID_INPUT",
-            f"video/audio input requires seedance 2.0 series; got {model}",
+            f"video/audio input not supported on {model}",
         )
 
     # Ark rejects audio reference as the sole reference input ("reference_audio
@@ -182,12 +159,13 @@ def build_request(
     budget: RequestBudget,
 ) -> dict[str, Any]:
     full = expand_model(params.model)
+    caps = capability_of(full)
 
     if params.duration is not None and params.frames is not None:
         raise CliError("INVALID_INPUT", "--duration and --frames are mutually exclusive")
 
     if params.frames is not None:
-        if full not in _FRAMES_CAPABLE:
+        if not caps.frames:
             raise CliError(
                 "INVALID_INPUT",
                 f"--frames only supported on 1.0-pro / 1.0-pro-fast; got {params.model}",
@@ -200,32 +178,39 @@ def build_request(
             )
 
     if params.duration is not None:
-        if full not in _DURATION_RANGE:
+        if caps.duration_range is None:
             raise CliError(
                 "INVALID_INPUT",
                 f"--duration not supported for unrecognized model {params.model!r}",
             )
-        lo, hi = _DURATION_RANGE[full]
+        lo, hi = caps.duration_range
         if not (lo <= params.duration <= hi):
             raise CliError(
                 "INVALID_INPUT",
                 f"--duration must be in [{lo},{hi}] for {params.model}; got {params.duration}",
             )
 
-    if params.generate_audio is not None and full not in _AUDIO_CAPABLE:
+    if params.generate_audio is not None and not caps.generate_audio:
         raise CliError("INVALID_INPUT", f"--generate-audio not supported on {params.model}")
 
-    if params.camera_fixed is not None and full not in _CAMERA_FIXED_CAPABLE:
+    if params.camera_fixed is not None and not caps.camera_fixed:
         raise CliError("INVALID_INPUT", f"--camera-fixed not supported on {params.model}")
 
-    if params.service_tier == "flex" and full not in _FLEX_CAPABLE:
+    if params.service_tier == "flex" and not caps.flex:
         raise CliError(
             "INVALID_INPUT",
-            f"--service-tier flex not supported on {params.model} (2.0 series excluded)",
+            f"--service-tier flex not supported on {params.model}",
         )
 
-    if params.resolution == "1080p" and full == "doubao-seedance-2-0-fast-260128":
-        raise CliError("INVALID_INPUT", "--resolution 1080p not supported on 2.0-fast")
+    if (
+        params.resolution is not None
+        and caps.resolutions is not None
+        and params.resolution not in caps.resolutions
+    ):
+        raise CliError(
+            "INVALID_INPUT",
+            f"--resolution {params.resolution} not supported on {params.model}",
+        )
 
     content = build_content(
         text=text,

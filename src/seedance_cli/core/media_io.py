@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from seedance_cli.core.client import capability_of
 from seedance_cli.framework.errors import CliError
 
 MediaKind = Literal["image", "video", "audio"]
@@ -19,11 +20,6 @@ _LIMIT = {"image": MAX_IMAGE_BYTES, "video": MAX_VIDEO_BYTES, "audio": MAX_AUDIO
 _LIMIT_LABEL = {"image": "30 MB", "video": "50 MB", "audio": "15 MB"}
 
 IMAGE_EXTS_CORE = {"jpeg", "jpg", "png", "webp", "bmp", "tiff", "gif"}
-IMAGE_EXTS_HEIC_MODELS = {
-    "doubao-seedance-1-5-pro-251215",
-    "doubao-seedance-2-0-260128",
-    "doubao-seedance-2-0-fast-260128",
-}
 VIDEO_EXTS = {"mp4", "mov"}
 AUDIO_EXTS = {"wav", "mp3"}
 
@@ -76,7 +72,7 @@ def format_allowed(ext: str, kind: MediaKind, model_full_id: str) -> bool:
     if kind == "image":
         if ext in IMAGE_EXTS_CORE:
             return True
-        return ext in {"heic", "heif"} and model_full_id in IMAGE_EXTS_HEIC_MODELS
+        return ext in {"heic", "heif"} and capability_of(model_full_id).heic
     if kind == "video":
         return ext in VIDEO_EXTS
     return ext in AUDIO_EXTS
