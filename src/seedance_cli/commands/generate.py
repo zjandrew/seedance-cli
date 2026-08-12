@@ -60,7 +60,7 @@ def _redact_base64(req: dict[str, Any]) -> dict[str, Any]:
     "-m",
     "--model",
     default=None,
-    help="model id or alias (2.0, 2.0-fast, 1.5-pro, 1.0-pro, 1.0-pro-fast)",
+    help="model id or alias (2.5, 2.0, 2.0-fast, 1.5-pro, 1.0-pro, 1.0-pro-fast)",
 )
 @click.option("--ratio", default=None)
 @click.option(

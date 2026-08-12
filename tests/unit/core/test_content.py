@@ -18,6 +18,7 @@ def _aud(raw: str, role: str | None = None) -> MediaRef:
     return MediaRef(raw=raw, role=role, is_url=raw.startswith("http"))
 
 
+MODEL_2_5 = "doubao-seedance-2-5-260628"
 MODEL_2_0 = "doubao-seedance-2-0-260128"
 MODEL_2_0_FAST = "doubao-seedance-2-0-fast-260128"
 MODEL_1_5_PRO = "doubao-seedance-1-5-pro-251215"
@@ -404,6 +405,209 @@ def test_build_request_duration_upper_bound_per_model():
         budget=RequestBudget(),
     )
     assert out["duration"] == 15
+
+
+# ---- seedance 2.5 capability surface (docs 82379/1520757, 2607688) ----
+
+
+def test_build_request_2_5_duration_range_4_to_30():
+    out = build_request(
+        params=RequestParams(model="2.5", duration=30),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["model"] == MODEL_2_5
+    assert out["duration"] == 30
+    for bad in (3, 31):
+        with pytest.raises(CliError):
+            build_request(
+                params=RequestParams(model="2.5", duration=bad),
+                text="a",
+                images=[],
+                videos=[],
+                audios=[],
+                budget=RequestBudget(),
+            )
+
+
+def test_build_request_duration_minus_one_model_decides():
+    # -1 = let the model pick the duration; supported on 2.5 / 2.0 series / 1.5-pro.
+    for m in ("2.5", "2.0", "2.0-fast", "1.5-pro"):
+        out = build_request(
+            params=RequestParams(model=m, duration=-1),
+            text="a",
+            images=[],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+        assert out["duration"] == -1, m
+
+
+def test_build_request_duration_minus_one_rejected_on_1_0_pro():
+    # Docs: 1.0-pro / 1.0-pro-fast take [2,12] only, no -1.
+    with pytest.raises(CliError) as ei:
+        build_request(
+            params=RequestParams(model="1.0-pro", duration=-1),
+            text="a",
+            images=[],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+    assert ei.value.code == "INVALID_INPUT"
+
+
+def test_build_request_1080p_rejected_on_2_5():
+    # 2.5 supports 480p/720p only.
+    with pytest.raises(CliError) as ei:
+        build_request(
+            params=RequestParams(model="2.5", resolution="1080p"),
+            text="a",
+            images=[],
+            videos=[],
+            audios=[],
+            budget=RequestBudget(),
+        )
+    assert "1080p" in ei.value.message
+
+
+def test_build_request_720p_accepted_on_2_5():
+    out = build_request(
+        params=RequestParams(model="2.5", resolution="720p"),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["resolution"] == "720p"
+
+
+def test_multimodal_reference_2_5_allows_30_images():
+    refs = [_img(f"https://x/{i}.png") for i in range(30)]
+    out = build_content(
+        text="a", images=refs, videos=[], audios=[], model=MODEL_2_5, budget=RequestBudget()
+    )
+    assert sum(1 for c in out if c["type"] == "image_url") == 30
+    with pytest.raises(CliError):
+        build_content(
+            text="a",
+            images=[*refs, _img("https://x/31.png")],
+            videos=[],
+            audios=[],
+            model=MODEL_2_5,
+            budget=RequestBudget(),
+        )
+
+
+def test_video_caps_10_on_2_5_but_3_on_2_0():
+    vids = [_vid(f"https://x/{i}.mp4") for i in range(10)]
+    out = build_content(
+        text="a", images=[], videos=vids, audios=[], model=MODEL_2_5, budget=RequestBudget()
+    )
+    assert sum(1 for c in out if c["type"] == "video_url") == 10
+    with pytest.raises(CliError):
+        build_content(
+            text="a",
+            images=[],
+            videos=vids[:4],
+            audios=[],
+            model=MODEL_2_0,
+            budget=RequestBudget(),
+        )
+
+
+def test_audio_only_allowed_on_2_5():
+    # 2.5 accepts audio as the sole reference input (2.0 series does not).
+    out = build_content(
+        text="a talking head",
+        images=[],
+        videos=[],
+        audios=[_aud("https://x/s.mp3")],
+        model=MODEL_2_5,
+        budget=RequestBudget(),
+    )
+    audio = next(c for c in out if c["type"] == "audio_url")
+    assert audio["role"] == "reference_audio"
+
+
+def test_video_role_reference_video_accepted():
+    # Docs-canonical video role (2.5 and 2.0 series): reference_video.
+    out = build_content(
+        text="extend it",
+        images=[],
+        videos=[_vid("https://x/v.mp4", role="reference_video")],
+        audios=[],
+        model=MODEL_2_5,
+        budget=RequestBudget(),
+    )
+    video = next(c for c in out if c["type"] == "video_url")
+    assert video["role"] == "reference_video"
+
+
+def test_2_5_defaults_reference_roles():
+    """Docs 1520757: on 2.5 the reference roles are mandatory — reference_image on
+    reference images, reference_video on videos. Role-less inputs would otherwise
+    be ambiguous (role-less image = first_frame) and fail asynchronously."""
+    out = build_content(
+        text="a",
+        images=[_img("https://x/a.png"), _img("https://x/b.png")],
+        videos=[_vid("https://x/v.mp4")],
+        audios=[],
+        model=MODEL_2_5,
+        budget=RequestBudget(),
+    )
+    images = [c for c in out if c["type"] == "image_url"]
+    videos = [c for c in out if c["type"] == "video_url"]
+    assert all(i["role"] == "reference_image" for i in images)
+    assert all(v["role"] == "reference_video" for v in videos)
+
+
+def test_2_5_single_roleless_image_stays_first_frame():
+    # i2v: a lone role-less image means first_frame (role omitted) — do not
+    # rewrite it into a reference_image.
+    out = build_content(
+        text="a",
+        images=[_img("https://x/a.png")],
+        videos=[],
+        audios=[],
+        model=MODEL_2_5,
+        budget=RequestBudget(),
+    )
+    image = next(c for c in out if c["type"] == "image_url")
+    assert "role" not in image
+
+
+def test_2_0_roleless_reference_inputs_unchanged():
+    # 2.0 was validated against the real API with role-less multi-image and
+    # role-less video inputs — keep sending them untouched.
+    out = build_content(
+        text="a",
+        images=[_img("https://x/a.png"), _img("https://x/b.png")],
+        videos=[_vid("https://x/v.mp4")],
+        audios=[],
+        model=MODEL_2_0,
+        budget=RequestBudget(),
+    )
+    for c in out:
+        if c["type"] in ("image_url", "video_url"):
+            assert "role" not in c
+
+
+def test_build_request_generate_audio_accepted_on_2_5():
+    out = build_request(
+        params=RequestParams(model="2.5", generate_audio=False),
+        text="a",
+        images=[],
+        videos=[],
+        audios=[],
+        budget=RequestBudget(),
+    )
+    assert out["generate_audio"] is False
 
 
 def test_build_request_pass_through_fields():

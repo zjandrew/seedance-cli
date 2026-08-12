@@ -19,6 +19,10 @@ def test_expand_known_alias():
     assert expand_model("1.0-pro-fast") == "doubao-seedance-1-0-pro-fast-251015"
 
 
+def test_expand_2_5_alias():
+    assert expand_model("2.5") == "doubao-seedance-2-5-260628"
+
+
 def test_expand_full_id_passes_through():
     assert expand_model("doubao-seedance-2-0-260128") == "doubao-seedance-2-0-260128"
 

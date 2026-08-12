@@ -60,6 +60,32 @@ def test_async_returns_task_id(tmp_config: Path, fake_ark: FakeArk) -> None:
     assert data["status"] == "queued"
 
 
+def test_dry_run_2_5_multimodal_reference(tmp_config: Path):
+    res = _cli().invoke(
+        root,
+        [
+            "--dry-run",
+            "generate",
+            "-p",
+            "a",
+            "-m",
+            "2.5",
+            "--image",
+            "https://x/a.png",
+            "--image",
+            "https://x/b.png",
+            "--duration",
+            "-1",
+        ],
+    )
+    assert res.exit_code == 0, res.output
+    req = json.loads(res.output)["data"]["request"]
+    assert req["model"] == "doubao-seedance-2-5-260628"
+    assert req["duration"] == -1
+    images = [c for c in req["content"] if c["type"] == "image_url"]
+    assert all(i["role"] == "reference_image" for i in images)
+
+
 def test_invalid_input_frames_on_2_0(tmp_config: Path):
     res = _cli().invoke(root, ["generate", "-p", "a", "--frames", "29", "--async"])
     assert res.exit_code == 2

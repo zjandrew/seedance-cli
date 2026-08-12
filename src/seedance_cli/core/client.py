@@ -10,6 +10,7 @@ DEFAULT_ENDPOINT = "https://ark.cn-beijing.volces.com/api/v3"
 DEFAULT_MODEL = "doubao-seedance-2-0-260128"
 
 MODEL_ALIASES: dict[str, str] = {
+    "2.5": "doubao-seedance-2-5-260628",
     "2.0": "doubao-seedance-2-0-260128",
     "2.0-fast": "doubao-seedance-2-0-fast-260128",
     "1.5-pro": "doubao-seedance-1-5-pro-251215",
@@ -26,13 +27,16 @@ class Capability:
     are explicit in the Ark docs (82379 series) AND expensive to fail server-side
     are enforced locally; everything else passes through."""
 
-    multimodal_reference: bool = False  # multiple role-less images as reference
+    multimodal_reference: bool = False  # multiple reference images
     video_audio_input: bool = False  # video/audio reference inputs
+    audio_only_input: bool = False  # audio as the sole reference input
     generate_audio: bool = False
     flex: bool = False  # --service-tier flex
     frames: bool = False
     camera_fixed: bool = False
     duration_range: tuple[int, int] | None = None  # None = --duration unsupported
+    duration_minus_one: bool = False  # duration=-1 lets the model decide
+    explicit_reference_roles: bool = False  # reference_* roles mandatory on inputs
     resolutions: frozenset[str] | None = None  # None = no local restriction
     max_ref_images: int = 9
     max_videos: int = 3
@@ -44,12 +48,28 @@ _RES_480_720 = frozenset({"480p", "720p"})
 _RES_480_1080 = frozenset({"480p", "720p", "1080p"})
 
 CAPABILITIES: dict[str, Capability] = {
+    # 2.5 — docs 82379/2607688 (tutorial) + 1520757 (create API)
+    "doubao-seedance-2-5-260628": Capability(
+        multimodal_reference=True,
+        video_audio_input=True,
+        audio_only_input=True,
+        generate_audio=True,
+        duration_range=(4, 30),
+        duration_minus_one=True,
+        explicit_reference_roles=True,
+        resolutions=_RES_480_720,
+        max_ref_images=30,
+        max_videos=10,
+        max_audios=10,
+        heic=True,
+    ),
     # 2.0 series — docs 82379/2291680
     "doubao-seedance-2-0-260128": Capability(
         multimodal_reference=True,
         video_audio_input=True,
         generate_audio=True,
         duration_range=(4, 15),
+        duration_minus_one=True,
         resolutions=_RES_480_1080,
         heic=True,
     ),
@@ -58,6 +78,7 @@ CAPABILITIES: dict[str, Capability] = {
         video_audio_input=True,
         generate_audio=True,
         duration_range=(4, 15),
+        duration_minus_one=True,
         resolutions=_RES_480_720,
         heic=True,
     ),
@@ -67,6 +88,7 @@ CAPABILITIES: dict[str, Capability] = {
         flex=True,
         camera_fixed=True,
         duration_range=(4, 12),
+        duration_minus_one=True,
         resolutions=_RES_480_1080,
         heic=True,
     ),

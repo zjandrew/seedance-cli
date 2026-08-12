@@ -12,11 +12,15 @@ from seedance_cli.framework.errors import CliError
 # mode (i.e. whenever a reference_audio item is present); "reference" is the role
 # used by the standalone multi-image reference path. Both are accepted as inputs.
 VALID_IMAGE_ROLES = {"first_frame", "last_frame", "reference", "reference_image"}
-VALID_VIDEO_ROLES = {"reference"}
+# "reference_video" is the docs-canonical role (2.5 requires it); "reference" is
+# kept for the 2.0 path that was validated against the real API.
+VALID_VIDEO_ROLES = {"reference", "reference_video"}
 VALID_AUDIO_ROLES = {"reference_audio"}
 # Ark requires every audio item in reference-media mode to carry this role;
 # the CLI defaults to it when --audio is passed without an explicit :role.
 DEFAULT_AUDIO_ROLE = "reference_audio"
+DEFAULT_REFERENCE_IMAGE_ROLE = "reference_image"
+DEFAULT_REFERENCE_VIDEO_ROLE = "reference_video"
 
 
 @dataclass
@@ -119,15 +123,22 @@ def build_content(
             f"video/audio input not supported on {model}",
         )
 
-    # Ark rejects audio reference as the sole reference input ("reference_audio
-    # cannot be the only reference input"). It must accompany a visual reference,
-    # so pair --audio with at least one --image or --video.
-    if audios and not images and not videos:
+    # On models without audio_only_input (everything below 2.5), Ark rejects
+    # audio as the sole reference input ("reference_audio cannot be the only
+    # reference input") — it must accompany a visual reference.
+    if audios and not images and not videos and not caps.audio_only_input:
         raise CliError(
             "INVALID_INPUT",
             "reference audio cannot be the only reference input; "
             "pair --audio with at least one --image or --video",
         )
+
+    # On 2.5 the reference roles are mandatory (docs 1520757): role-less inputs
+    # are ambiguous there (role-less image = first_frame), so default them. 2.0
+    # keeps sending role-less inputs — validated against the real API.
+    image_default_role = None
+    if caps.explicit_reference_roles and (scenario == "multimodal_reference" or videos or audios):
+        image_default_role = DEFAULT_REFERENCE_IMAGE_ROLE
 
     content: list[dict[str, Any]] = []
     if text:
@@ -135,11 +146,17 @@ def build_content(
     for ref in images:
         if ref.role and ref.role not in VALID_IMAGE_ROLES:
             raise CliError("INVALID_INPUT", f"invalid image role {ref.role!r}")
-        content.append(to_payload(ref, kind="image", model=full, budget=budget))
+        payload = to_payload(ref, kind="image", model=full, budget=budget)
+        if image_default_role:
+            payload.setdefault("role", image_default_role)
+        content.append(payload)
     for ref in videos:
         if ref.role and ref.role not in VALID_VIDEO_ROLES:
             raise CliError("INVALID_INPUT", f"invalid video role {ref.role!r}")
-        content.append(to_payload(ref, kind="video", model=full, budget=budget))
+        payload = to_payload(ref, kind="video", model=full, budget=budget)
+        if caps.explicit_reference_roles:
+            payload.setdefault("role", DEFAULT_REFERENCE_VIDEO_ROLE)
+        content.append(payload)
     for ref in audios:
         if ref.role and ref.role not in VALID_AUDIO_ROLES:
             raise CliError("INVALID_INPUT", f"invalid audio role {ref.role!r}")
@@ -184,10 +201,12 @@ def build_request(
                 f"--duration not supported for unrecognized model {params.model!r}",
             )
         lo, hi = caps.duration_range
-        if not (lo <= params.duration <= hi):
+        is_minus_one = params.duration == -1 and caps.duration_minus_one
+        if not is_minus_one and not (lo <= params.duration <= hi):
+            allowed = f"[{lo},{hi}] or -1" if caps.duration_minus_one else f"[{lo},{hi}]"
             raise CliError(
                 "INVALID_INPUT",
-                f"--duration must be in [{lo},{hi}] for {params.model}; got {params.duration}",
+                f"--duration must be in {allowed} for {params.model}; got {params.duration}",
             )
 
     if params.generate_audio is not None and not caps.generate_audio:
