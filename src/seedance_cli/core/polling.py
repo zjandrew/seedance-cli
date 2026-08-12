@@ -27,7 +27,7 @@ _TERMINAL_FAIL = {"failed", "cancelled"}
 _TERMINAL_EXPIRED = {"expired"}
 
 
-def _to_dict(obj: Any) -> dict[str, Any]:
+def to_dict(obj: Any) -> dict[str, Any]:
     # SDK responses come as dict-like, pydantic-model-like, or SimpleNamespace.
     if obj is None:
         return {}
@@ -66,7 +66,7 @@ def poll_until_done(
         while True:
             resp = tasks_api.get(task_id=task_id)
             poll_count += 1
-            status = getattr(resp, "status", None) or _to_dict(resp).get("status") or "unknown"
+            status = getattr(resp, "status", None) or to_dict(resp).get("status") or "unknown"
             if on_status:
                 on_status(status, poll_count)
             if status in _TERMINAL_OK:
@@ -78,7 +78,7 @@ def poll_until_done(
                 )
             if status in _TERMINAL_FAIL:
                 err = getattr(resp, "error", None)
-                err_dict = _to_dict(err) if err is not None else {}
+                err_dict = to_dict(err) if err is not None else {}
                 raise CliError(
                     "TASK_FAILED",
                     f"task {task_id} failed",

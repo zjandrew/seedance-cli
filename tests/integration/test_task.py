@@ -78,6 +78,36 @@ def test_task_get_wait_and_download(tmp_config: Path, tmp_path: Path, fake_ark: 
     assert out.read_bytes() == b"VID"
 
 
+def test_task_get_failed_shows_server_error(tmp_config: Path, fake_ark: FakeArk) -> None:
+    """A failed task inspected without --wait must still surface the server's
+    error — with 2.5's deferred rejection it is the only diagnostic available."""
+    fake_ark.content_generation.tasks.scripted_statuses = ["failed"]
+    fake_ark.content_generation.tasks.response_extras = {
+        "error": SimpleNamespace(
+            code="InvalidParameter.TaskTypeConstraint", message="ratio must be adaptive"
+        ),
+    }
+    res = _cli().invoke(root, ["task", "get", "cgt-1"])
+    assert res.exit_code == 0, res.output
+    data = json.loads(res.output)["data"]
+    assert data["status"] == "failed"
+    assert data["error"]["code"] == "InvalidParameter.TaskTypeConstraint"
+    assert data["error"]["message"] == "ratio must be adaptive"
+
+
+def test_task_get_wait_failed_surfaces_server_error(tmp_config: Path, fake_ark: FakeArk) -> None:
+    fake_ark.content_generation.tasks.scripted_statuses = ["failed"]
+    fake_ark.content_generation.tasks.response_extras = {
+        "error": SimpleNamespace(code="ContentPolicy", message="bad prompt"),
+    }
+    res = _cli().invoke(root, ["task", "get", "cgt-1", "--wait", "--poll-interval", "0"])
+    assert res.exit_code == 6, res.output
+    err = json.loads(res.output)["error"]
+    assert err["code"] == "TASK_FAILED"
+    assert err["details"]["error"]["code"] == "ContentPolicy"
+    assert err["details"]["error"]["message"] == "bad prompt"
+
+
 def test_task_delete(tmp_config: Path, fake_ark: FakeArk) -> None:
     res = _cli().invoke(root, ["task", "delete", "cgt-1"])
     assert res.exit_code == 0, res.output

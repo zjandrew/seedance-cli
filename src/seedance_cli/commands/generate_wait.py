@@ -10,7 +10,7 @@ from rich.console import Console
 from seedance_cli.__main__ import emit
 from seedance_cli.core.download import download
 from seedance_cli.core.naming import resolve_out_path
-from seedance_cli.core.polling import poll_until_done
+from seedance_cli.core.polling import poll_until_done, to_dict
 from seedance_cli.framework.envelope import Success
 
 
@@ -52,6 +52,11 @@ def response_to_data(resp: Any) -> dict[str, Any]:
             "completion_tokens": getattr(usage, "completion_tokens", None),
             "total_tokens": getattr(usage, "total_tokens", None),
         }
+    error = getattr(resp, "error", None)
+    if error is not None:
+        # Failed tasks carry the server's error object (deferred rejection on
+        # 2.5 surfaces only here) — keep it visible in non-wait `task get`/`list`.
+        data["error"] = to_dict(error)
     return {k: v for k, v in data.items() if v is not None}
 
 

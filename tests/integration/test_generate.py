@@ -173,6 +173,10 @@ def test_task_failed_exits_6(tmp_config: Path, fake_ark: FakeArk) -> None:
     assert res.exit_code == 6, res.output
     err = json.loads(res.output)["error"]
     assert err["code"] == "TASK_FAILED"
+    # Server-side failure detail must reach the envelope — with 2.5's deferred
+    # rejection this is the only diagnostic the user ever gets.
+    assert err["details"]["error"]["code"] == "ContentPolicy"
+    assert err["details"]["error"]["message"] == "bad prompt"
 
 
 def test_return_last_frame_downloads_png(
