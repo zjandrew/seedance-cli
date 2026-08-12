@@ -12,6 +12,7 @@ import seedance_cli.core.client as _client_mod
 from seedance_cli.__main__ import emit
 from seedance_cli.core.client import (
     DEFAULT_MODEL,
+    create_task,
     expand_model,
     resolve_auth,
 )
@@ -206,7 +207,7 @@ def generate(
         profile_endpoint=profile.endpoint,
     )
     client = _client_mod.make_ark_client(api_key, endpoint)
-    created = client.content_generation.tasks.create(**request_body)
+    created = create_task(client, request_body)
     task_id = getattr(created, "id", None)
     if not task_id:
         raise CliError("INTERNAL", "API did not return a task id")

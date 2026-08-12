@@ -122,6 +122,64 @@ def test_resolve_auth_cli_endpoint_wins_over_env_and_profile():
     assert endpoint == "https://flag-endpoint.example.com/api/v3"
 
 
+def test_create_task_routes_sdk_unknown_params_via_extra_body() -> None:
+    # The Ark SDK's create() has an explicit kwarg list that lags new API params
+    # (2.5's output_format / omni_reference_task_type raise TypeError as bare
+    # kwargs); they must travel through extra_body instead.
+    from seedance_cli.core.client import create_task
+
+    captured: dict[str, object] = {}
+
+    class FakeTasks:
+        def create(self, **kwargs: object) -> str:
+            captured.update(kwargs)
+            return "ok"
+
+    class FakeCG:
+        tasks = FakeTasks()
+
+    class FakeClient:
+        content_generation = FakeCG()
+
+    body = {
+        "model": "doubao-seedance-2-5-260628",
+        "content": [{"type": "text", "text": "a"}],
+        "watermark": False,
+        "duration": 8,
+        "omni_reference_task_type": "extend",
+        "output_format": "mov",
+    }
+    assert create_task(FakeClient(), dict(body)) == "ok"
+    assert "omni_reference_task_type" not in captured
+    assert "output_format" not in captured
+    assert captured["extra_body"] == {
+        "omni_reference_task_type": "extend",
+        "output_format": "mov",
+    }
+    assert captured["model"] == "doubao-seedance-2-5-260628"
+    assert captured["duration"] == 8
+
+
+def test_create_task_no_extra_body_when_all_params_known() -> None:
+    from seedance_cli.core.client import create_task
+
+    captured: dict[str, object] = {}
+
+    class FakeTasks:
+        def create(self, **kwargs: object) -> str:
+            captured.update(kwargs)
+            return "ok"
+
+    class FakeCG:
+        tasks = FakeTasks()
+
+    class FakeClient:
+        content_generation = FakeCG()
+
+    create_task(FakeClient(), {"model": "doubao-seedance-2-0-260128", "content": []})
+    assert "extra_body" not in captured
+
+
 def test_make_ark_client_uses_args(monkeypatch: pytest.MonkeyPatch) -> None:
     # Substitute the SDK's Ark class with a fake to verify make_ark_client
     # passes api_key and base_url through correctly.

@@ -154,6 +154,43 @@ class ArkLike(Protocol):
     def content_generation(self) -> Any: ...
 
 
+# Explicit kwargs accepted by the Ark SDK's Tasks.create() (volcengine-python-sdk
+# 5.0.44). The SDK's parameter list lags new API params (e.g. 2.5's output_format
+# and omni_reference_task_type raise TypeError as bare kwargs), so anything else
+# must travel through its extra_body escape hatch — which merges into the request
+# JSON and keeps working even after the SDK adds native support.
+_SDK_CREATE_PARAMS = frozenset(
+    {
+        "model",
+        "content",
+        "safety_identifier",
+        "callback_url",
+        "return_last_frame",
+        "service_tier",
+        "execution_expires_after",
+        "priority",
+        "generate_audio",
+        "draft",
+        "camera_fixed",
+        "watermark",
+        "seed",
+        "resolution",
+        "ratio",
+        "duration",
+        "frames",
+        "tools",
+    }
+)
+
+
+def create_task(client: ArkLike, request_body: dict[str, Any]) -> Any:
+    known = {k: v for k, v in request_body.items() if k in _SDK_CREATE_PARAMS}
+    extra = {k: v for k, v in request_body.items() if k not in _SDK_CREATE_PARAMS}
+    if extra:
+        return client.content_generation.tasks.create(**known, extra_body=extra)
+    return client.content_generation.tasks.create(**known)
+
+
 def expand_model(name: str) -> str:
     if name in _FULL_IDS:
         return name
